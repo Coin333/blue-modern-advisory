@@ -28,9 +28,9 @@ html.lenis body {
 /* ---- Cross-page transition: light opacity crossfade between pages --------
    Works in every browser (no reliance on cross-document View Transitions).
    Opacity-only (never transform) so the fixed nav keeps its viewport anchoring
-   during the animation. Enter auto-plays on every load with no JS dependency;
-   exit is triggered by enhance.js adding .bma-leaving to <html>. Both pages
-   share the same light body background, so the crossfade has no flash. */
+   during the animation. Only the home page fades: it auto-plays its fade-in on
+   load (no JS dependency); other pages render normally. The exit fade is run by
+   enhance.js adding .bma-leaving to <html>, and only when navigating to home. */
 @keyframes bma-page-in {
   from {
     opacity: 0;
@@ -47,7 +47,8 @@ html.lenis body {
     opacity: 0;
   }
 }
-#root {
+/* enter-fade only on the home page (the only page that has the hero) */
+#root:has(.hero-og) {
   animation: bma-page-in 0.4s ease both;
 }
 html.bma-leaving #root {
@@ -107,8 +108,10 @@ html.bma-leaving #root {
   inset: 0;
   z-index: 1200;
   pointer-events: none;
-  opacity: 0.035;
-  mix-blend-mode: multiply;
+  opacity: 0.03;
+  /* No mix-blend-mode: a fixed full-viewport blend forces the compositor to
+     read back + re-blend the whole framebuffer on every scroll frame. Plain
+     source-over compositing is GPU-cached and costs nothing while scrolling. */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -358,4 +361,67 @@ html.bma-leaving #root {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* ========================================================================== */
+/* Scroll-performance overrides (loaded after styles.css, so these win)        */
+/* backdrop-filter cannot be cached during scroll: the backdrop changes every  */
+/* frame, so each glass element re-blurs every frame. Cost scales with blur    */
+/* radius x area, so capping the radius on large/repeated panels roughly       */
+/* halves the per-frame GPU work while keeping the frosted look.               */
+/* ========================================================================== */
+
+/* Large / repeated card + panel surfaces: cap to a cheap 10px frost. */
+.service-card,
+.team-card,
+.problem-card,
+.outcome-card,
+.pricing-card,
+.pricing-card--featured,
+.gtm-card,
+.glass-card,
+.glass-card-blue,
+.bridge-card,
+.cap-card,
+.capsup-card,
+.capfeat-main,
+.cap-convo-card,
+.cap-graph-panel,
+.engine-card,
+.engine-hero-inner,
+.eng-shell,
+.offering-tier-card,
+.offering-pricing-card,
+.offering-motion-card,
+.how-work-card,
+.prod-feat-main,
+.network-two-col,
+.dock-list,
+.opp-panel-wrap,
+.opp-tab-list,
+.hero-proof {
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+}
+
+/* The nav is fixed and on-screen during the entire scroll, so its blur is an
+   always-on per-frame cost. blur(30px) was the single most expensive layer;
+   16px is visually near-identical and far cheaper. */
+.nav-pill,
+.nav-mobile-menu,
+.bma-team-topbar {
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* Skip rendering work for below-the-fold sections until they near the
+   viewport. contain-intrinsic-size keeps total page height (and the scrollbar)
+   stable so there is no jump; `auto` lets the browser remember real sizes
+   after first paint. Progressive enhancement: ignored where unsupported. */
+.bridge-section,
+.pricing-section,
+.uc-section,
+#faq {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 700px;
 }

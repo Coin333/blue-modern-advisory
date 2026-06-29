@@ -263,6 +263,9 @@ function initPageTransitions() {
     if (url.href === location.href) return;
     // pure in-page anchor (same path + hash) is handled by smooth scrolling
     if (url.pathname === location.pathname && url.hash) return;
+    // Per request: only crossfade when navigating TO the home page.
+    const lastSeg = url.pathname.split("/").pop();
+    if (lastSeg !== "" && !/^index\.html?$/i.test(lastSeg)) return;
     e.preventDefault();
     docEl.classList.add("bma-leaving");
     setTimeout(() => {
@@ -288,10 +291,13 @@ async function boot() {
       const mod =
         await import("https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.mjs");
       const Lenis = mod.default || mod.Lenis;
+      // Frame-based lerp (snappier, less "floaty lag") instead of a 1.05s
+      // time-eased glide. Lower repaint pressure per scroll input.
       lenis = new Lenis({
-        duration: 1.05,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        lerp: 0.12,
+        wheelMultiplier: 1,
         smoothWheel: true,
+        syncTouch: false,
       });
       onScroll = initScrollCoupled(() => ({ y: lenis.scroll }));
       lenis.on("scroll", (e) => onScroll(e.scroll, e.velocity));
