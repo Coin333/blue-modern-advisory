@@ -1015,14 +1015,14 @@ body {
   display: flex;
   align-items: center;
   width: max-content;
-  animation: trusted-marquee 28s linear infinite;
+  animation: trusted-marquee 55s linear infinite;
 }
 .trusted-marquee-track:hover {
   animation-play-state: paused;
 }
 .trusted-marquee-item {
   flex: 0 0 auto;
-  padding: 0 3rem;
+  padding: 0 5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19739,10 +19739,19 @@ h6,
 .hero-net {
   pointer-events: auto;
   opacity: 0;
-  transition: opacity 1.1s ease;
+  transform: scale(1.035);
+  filter: blur(9px);
+  transition:
+    opacity 1.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.9s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 1.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* network resolves into focus: fades up while it un-blurs and settles from a
+   faint zoom, so the field materialises instead of popping in */
 .hero-net.is-on {
   opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
 }
 .hero-og-bg {
   background:
@@ -20655,4 +20664,40 @@ h6,
   .bma-tour-pop.is-on {
     transform: translate(-50%, 0) scale(1);
   }
+}
+
+/* ===== Trusted-by marquee: two layers, slowed, opposite directions, a
+   directional 3D bend on hover, each logo links to its site ===== */
+
+/* second row drifts the other way so the two layers read as intentional. Only
+   the DIRECTION is overridden here (a longhand), so prefers-reduced-motion -
+   which zeroes the `animation` shorthand earlier in the cascade - still fully
+   stops both rows. */
+.trusted-marquee-track--rev {
+  animation-direction: reverse;
+}
+.trusted-marquee-track--b {
+  margin-top: 0.7rem;
+}
+
+/* items are links now */
+a.trusted-marquee-item {
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+}
+/* smooth GPU-only settle for the static hovers; the keyframe hovers below
+   override this while they run */
+.trusted-logo-img {
+  transition:
+    filter 0.3s ease,
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+}
+
+/* every logo does the same 3D bend (the Stanford turn). marquee-bend.js sets
+   --bend ONCE on pointer-enter, from the side the cursor came in on, so the
+   logo tips toward that side and then holds - it never reverses or oscillates
+   while the pointer stays on it; it only eases back to flat on leave. */
+.trusted-marquee-item.is-bent .trusted-logo-img {
+  transform: perspective(460px) rotateY(var(--bend, 22deg));
 }

@@ -795,7 +795,6 @@ export function initHeroNetwork(canvas) {
     { threshold: 0.01 },
   );
   io.observe(host);
-  canvas.classList.add("is-on");
 
   const v = new THREE.Vector3();
   let lastNow = performance.now();
@@ -1156,9 +1155,16 @@ export function initHeroNetwork(canvas) {
   }
 
   let rafId = 0;
+  let revealed = false;
   function loop() {
     if (!running) return;
     step();
+    if (!revealed) {
+      // hold the first (heavy/blank) frame at opacity 0, then reveal the
+      // already-rendered scene next frame so the fade starts from real content
+      revealed = true;
+      requestAnimationFrame(() => canvas.classList.add("is-on"));
+    }
     rafId = requestAnimationFrame(loop);
   }
   loop();
