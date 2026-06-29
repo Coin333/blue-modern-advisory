@@ -309,7 +309,7 @@ export function initHeroNetwork(canvas) {
   // while focusing a dot, sit it up and to the right so the info card tucks into
   // the space beside it (negative X pushes content right, positive Y pushes up)
   const FOCUS_SHIFT_X = -0.078, // dot lands just left of the popup (~58% width)
-    FOCUS_SHIFT_Y = 0.246; // dot rises to the popup's vertical centre (~25% up)
+    FOCUS_SHIFT_Y = 0.19; // dot sits at the popup card's vertical middle (top:31%)
   let viewShift = VIEW_SHIFT; // horizontal view nudge, eased per state
   let viewShiftY = 0; // vertical view nudge, only while focusing a dot
   function applyViewOffset() {
@@ -790,11 +790,36 @@ export function initHeroNetwork(canvas) {
     (es) =>
       es.forEach((en) => {
         running = en.isIntersecting;
-        if (running) loop();
+        if (running) kick();
       }),
     { threshold: 0.01 },
   );
   io.observe(host);
+
+  // ── Pause the hero render while the user is actively scrolling ────────────
+  // This WebGL scene re-renders a full-screen blurred 360 panorama + lattice
+  // every frame, and the observer above keeps it running until the hero is
+  // ~99% scrolled away. Rendering it during scroll starves the main thread and
+  // makes scrolling choppy near the top. The hero is leaving the viewport as
+  // you scroll, so freeze it during active scroll and resume once it settles.
+  let scrolling = false;
+  let scrollIdleTimer = 0;
+  function kick() {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+  function onUserScroll() {
+    scrolling = true;
+    clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = setTimeout(() => {
+      scrolling = false;
+      lastNow = performance.now(); // avoid a dt jump on the first frame back
+      if (running) kick();
+    }, 140);
+  }
+  ["scroll", "wheel", "touchmove"].forEach((evt) =>
+    window.addEventListener(evt, onUserScroll, { passive: true }),
+  );
 
   const v = new THREE.Vector3();
   let lastNow = performance.now();
@@ -1157,7 +1182,7 @@ export function initHeroNetwork(canvas) {
   let rafId = 0;
   let revealed = false;
   function loop() {
-    if (!running) return;
+    if (!running || scrolling) return; // resumed via kick() once scroll settles
     step();
     if (!revealed) {
       // hold the first (heavy/blank) frame at opacity 0, then reveal the
