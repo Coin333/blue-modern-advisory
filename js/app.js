@@ -35,16 +35,64 @@
     });
   }
 
-  /* ---- FAQ accordion ---- */
+  /* ---- FAQ accordion: single-open, height-animated reveal (set to the
+     answer's true height so it never clips), and the opened item eases into
+     view on the Lenis smooth scroll so its answer never opens off-screen ---- */
   function initFaq() {
-    document.querySelectorAll(".faq-item").forEach(function (item) {
+    var items = Array.prototype.slice.call(
+      document.querySelectorAll(".faq-item"),
+    );
+    function setOpen(item, open) {
+      item.classList.toggle("open", open);
+      var btn = item.querySelector(".faq-btn");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    items.forEach(function (item) {
       var btn = item.querySelector(".faq-btn");
       if (!btn) return;
       btn.addEventListener("click", function () {
-        var open = item.classList.toggle("open");
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        var willOpen = !item.classList.contains("open");
+        items.forEach(function (other) {
+          if (other !== item) setOpen(other, false); // single-open
+        });
+        setOpen(item, willOpen);
+        if (
+          willOpen &&
+          window.lenis &&
+          typeof window.lenis.scrollTo === "function"
+        ) {
+          window.lenis.scrollTo(item, { offset: -130, duration: 0.8 });
+        }
       });
     });
+  }
+
+  /* ---- FAQ connector rail: fill it from the Lenis-smoothed scroll so the rail
+     tracks how far you've read down the list (the section's scroll tie) ---- */
+  function initFaqRail() {
+    var list = document.querySelector(".faq-list");
+    if (!list) return;
+    var clamp = function (v, a, b) {
+      return v < a ? a : v > b ? b : v;
+    };
+    function apply() {
+      var r = list.getBoundingClientRect();
+      var vh = window.innerHeight || 800;
+      var focus = vh * 0.34; // read-line: the rail fills as the list passes it
+      var p = clamp((focus - r.top) / (r.height || 1), 0, 1);
+      list.style.setProperty("--faq-p", p.toFixed(4));
+    }
+    var last = NaN;
+    function loop() {
+      var y = window.lenis ? window.lenis.scroll : window.scrollY;
+      if (y !== last) {
+        last = y;
+        apply();
+      }
+      requestAnimationFrame(loop);
+    }
+    apply();
+    requestAnimationFrame(loop);
   }
 
   /* ---- Use-case accordion ---- */
@@ -162,6 +210,7 @@
   function init() {
     initNav();
     initFaq();
+    initFaqRail();
     initUseCases();
     initReveal();
     initAuthForm();

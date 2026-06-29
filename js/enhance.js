@@ -125,7 +125,7 @@ function initMagnetic() {
   if (reduceMotion || !finePointer) return;
   const targets = document.querySelectorAll(
     ".pricing-cta-primary, .final-cta-btn-primary, " +
-      ".ft__cta-btn, .auth-btn-primary",
+      ".auth-btn-primary, .about-close-btn",
   );
   targets.forEach((el) => {
     el.classList.add("bma-magnetic");
@@ -198,6 +198,137 @@ function initFormFeedback() {
     };
     input.addEventListener("input", sync);
     input.addEventListener("blur", sync);
+  });
+}
+
+/* ---- Capabilities "four systems" stacking showcase ----------------------
+   Sticky cards layer over one another; the covered card recedes (scale + dim)
+   behind the incoming one. Coverage is derived from the NEXT card's top vs the
+   pin line and this card's *layout* height (offsetHeight, unaffected by the
+   transform we apply), so a card's recede never feeds back into its own
+   measurement. Runs only while the section is on screen; the `is-active` class
+   also gates the SVG illustration motion (see styles.css). */
+function initPipelineStack() {
+  const stack = document.querySelector(".bma-stack");
+  if (!stack) return;
+  const cards = Array.prototype.slice.call(
+    stack.querySelectorAll(".bma-stack-card"),
+  );
+  if (!cards.length) return;
+
+  // Reduced motion / no observer: render static, fully-stacked, no recede.
+  if (reduceMotion || !("IntersectionObserver" in window)) {
+    stack.classList.add("is-active");
+    return;
+  }
+
+  // position:sticky is broken site-wide (html/body overflow-x:hidden), so the
+  // deck never pins on its own and the cards just scroll past. We fake the pin
+  // with a transform tied to the (Lenis-smoothed) scroll: each card holds at
+  // its staggered CSS `top` line once scrolled to, until the stack's own bottom
+  // would push it out - exactly what sticky would do - then the whole deck
+  // scrolls away. Natural geometry is measured once with transforms cleared and
+  // cached, so a card's pin never feeds back into its own measurement.
+  const scrollPos = () =>
+    window.lenis && typeof window.lenis.scroll === "number"
+      ? window.lenis.scroll
+      : window.scrollY || window.pageYOffset || 0;
+
+  let cardTops = []; // natural document-top of each card (no transform)
+  let cardHs = []; // natural layout height (unaffected by transform)
+  let pinLines = []; // the CSS `top` line each card pins at (the deck stagger)
+  let containerBottom = 0;
+  let measured = false;
+  function measure() {
+    cards.forEach((c) => (c.style.transform = "")); // read natural positions
+    const sp = scrollPos();
+    cardTops = cards.map((c) => c.getBoundingClientRect().top + sp);
+    cardHs = cards.map((c) => c.offsetHeight || 1);
+    pinLines = cards.map((c) => parseFloat(getComputedStyle(c).top) || 0);
+    containerBottom = stack.getBoundingClientRect().bottom + sp;
+    measured = true;
+  }
+
+  let active = false;
+  let rafId = 0;
+
+  function frame() {
+    if (!active) {
+      rafId = 0;
+      return;
+    }
+    if (!measured) measure();
+    const sp = scrollPos();
+    const buildStart = (window.innerHeight || 800) * 0.92;
+
+    // pin each card: translate it down to hold at its line once scrolled to,
+    // clamped so it can't escape past the bottom of the stack
+    const tY = [];
+    const viewTop = []; // each card's resulting viewport-top after the pin
+    for (let i = 0; i < cards.length; i++) {
+      const pinStart = cardTops[i] - pinLines[i];
+      const maxT = Math.max(0, containerBottom - (cardTops[i] + cardHs[i]));
+      const t = clamp(sp - pinStart, 0, maxT);
+      tY[i] = t;
+      viewTop[i] = cardTops[i] - sp + t;
+    }
+
+    for (let i = 0; i < cards.length; i++) {
+      // `--p` scrubs the SVG assembly: 0 entering, 1 once the card is pinned
+      const denom = buildStart - pinLines[i] || 1;
+      const p =
+        viewTop[i] <= pinLines[i] + 24
+          ? 1
+          : clamp((buildStart - viewTop[i]) / denom, 0, 1);
+      cards[i].style.setProperty("--p", p.toFixed(3));
+
+      // recede: tilt + dim each covered card back behind the incoming one
+      let transform = "translateY(" + tY[i].toFixed(1) + "px)";
+      if (i < cards.length - 1) {
+        const coverage = clamp(
+          1 - (viewTop[i + 1] - pinLines[i + 1]) / cardHs[i],
+          0,
+          1,
+        );
+        if (coverage > 0) {
+          transform +=
+            " perspective(1100px) rotateX(" +
+            (coverage * 7).toFixed(2) +
+            "deg) scale(" +
+            (1 - coverage * 0.02).toFixed(4) +
+            ")";
+          cards[i].style.opacity = (1 - coverage * 0.18).toFixed(3);
+        } else {
+          cards[i].style.opacity = "";
+        }
+      }
+      cards[i].style.transform = transform;
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+
+  // Start every card un-built so each assembles as it scrolls in (rather than
+  // flashing complete-then-empty when the section first intersects).
+  cards.forEach((c) => c.style.setProperty("--p", "0"));
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      active = entries[0].isIntersecting;
+      stack.classList.toggle("is-active", active);
+      if (active) {
+        if (!rafId) rafId = requestAnimationFrame(frame);
+      } else {
+        cards.forEach((c) => {
+          c.style.transform = "";
+          c.style.opacity = "";
+        });
+      }
+    },
+    { threshold: 0, rootMargin: "0px 0px -10% 0px" },
+  );
+  io.observe(stack);
+  window.addEventListener("resize", () => {
+    measured = false; // re-measure natural geometry after a layout change
   });
 }
 
@@ -274,6 +405,156 @@ function initPageTransitions() {
   });
 }
 
+/* ---- About page: scroll-scrubbed "wired editorial spread" ----------------
+   Everything on the About page is tied to the smoothed Lenis scroll. Per
+   section we publish three CSS custom properties the stylesheet consumes:
+     --aw-in   0..1  entrance progress (content rises + fades in)
+     --aw-fill 0..1  how far the left spine wire has drawn down the section
+     --aw-par  px    parallax offset for the header node-field
+   plus a page-level --aw-vel (0..1) scroll-velocity charge that glows the
+   heading beads. The CSS falls back to the finished state (var(..., 1)) so a
+   no-JS or reduced-motion visit shows the page fully drawn and static.
+   Returns an update(scrollY, velocity) the boot loop feeds each scroll frame,
+   or null when there is nothing to drive. */
+function initAboutScroll() {
+  const page = document.querySelector(".about-page");
+  if (!page) return null;
+  const sections = Array.prototype.slice.call(page.querySelectorAll(".aw"));
+  if (!sections.length) return null;
+
+  const setFinal = () => {
+    sections.forEach((s) => {
+      s.style.setProperty("--aw-in", "1");
+      s.style.setProperty("--aw-fill", "1");
+      s.style.setProperty("--aw-par", "0px");
+    });
+    page.style.setProperty("--aw-vel", "0");
+  };
+
+  // Motion off: draw everything finished, drive nothing.
+  if (reduceMotion) {
+    setFinal();
+    return null;
+  }
+
+  // Cache each section's absolute top + height so per-frame work is pure
+  // arithmetic (no layout reads while scrolling). Re-measure when the viewport,
+  // fonts, or team photos change the geometry.
+  let metrics = [];
+  const measure = () => {
+    const sy = window.lenis ? window.lenis.scroll : window.scrollY;
+    metrics = sections.map((s) => {
+      const r = s.getBoundingClientRect();
+      return { top: r.top + sy, height: r.height || 1 };
+    });
+  };
+  measure();
+  window.addEventListener("resize", measure, { passive: true });
+  window.addEventListener("load", measure);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(measure).catch(() => {});
+  }
+  page.querySelectorAll("img").forEach((img) => {
+    if (!img.complete) img.addEventListener("load", measure, { once: true });
+  });
+
+  return function updateAboutScroll(scrollY, velocity) {
+    const H = window.innerHeight || 800;
+    for (let i = 0; i < sections.length; i++) {
+      const m = metrics[i];
+      if (!m) continue;
+      const top = m.top - scrollY; // viewport-relative top this frame
+      // entrance: 0 as the section crosses the bottom edge, 1 after it has
+      // travelled ~40% of the viewport upward.
+      const pIn = clamp((H - top) / (H * 0.42), 0, 1);
+      // spine fill: a reading line at mid-viewport sweeps the section top->bottom.
+      const pFill = clamp((H * 0.52 - top) / (m.height * 0.72), 0, 1);
+      // parallax: signed distance of the section center from the viewport center.
+      const center = (top + m.height / 2 - H / 2) / H;
+      const s = sections[i];
+      s.style.setProperty("--aw-in", pIn.toFixed(3));
+      s.style.setProperty("--aw-fill", pFill.toFixed(3));
+      s.style.setProperty(
+        "--aw-par",
+        (clamp(center, -1.2, 1.2) * 20).toFixed(1) + "px",
+      );
+    }
+    page.style.setProperty(
+      "--aw-vel",
+      clamp(Math.abs(velocity || 0) * 0.015, 0, 1).toFixed(3),
+    );
+  };
+}
+
+/* ---- Use Cases: the wired, self-opening list (homepage #use-cases) --------
+   A pipeline spine fills as you scroll; each row's node bead lights when the
+   reading line passes it, and the row nearest the line auto-opens. Click and
+   keyboard (the app.js accordion) keep working; reduced motion gets a full
+   spine, lit beads, and the plain click accordion. Returns update(scrollY) the
+   boot loop feeds each scroll frame, or null when the section is absent. */
+function initUseCases() {
+  const list = document.querySelector(".uc-list");
+  if (!list) return null;
+  const rows = Array.prototype.slice.call(list.querySelectorAll(".uc-row"));
+  if (!rows.length) return null;
+  const triggers = rows.map((r) => r.querySelector(".uc-trigger"));
+  const details = rows.map((r) => r.querySelector(".uc-detail"));
+
+  if (reduceMotion) {
+    rows.forEach((r) => r.classList.add("is-lit"));
+    list.style.setProperty("--uc-fill", "1");
+    return null;
+  }
+
+  let lastActive = -1;
+  const openRow = (idx) => {
+    rows.forEach((r, i) => {
+      const on = i === idx;
+      r.classList.toggle("uc-row--open", on);
+      if (details[i]) details[i].classList.toggle("uc-detail--open", on);
+      if (triggers[i]) {
+        triggers[i].setAttribute("aria-expanded", on ? "true" : "false");
+      }
+    });
+  };
+
+  return function updateUseCases() {
+    const H = window.innerHeight || 800;
+    const line = H * 0.42; // reading line
+    // Batch the layout reads before any writes to avoid thrash.
+    const lr = list.getBoundingClientRect();
+    const centers = triggers.map((t) => {
+      const r = t.getBoundingClientRect();
+      return r.top + r.height / 2;
+    });
+    const fill = clamp((line - lr.top) / Math.max(lr.height, 1), 0, 1);
+    let best = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < centers.length; i++) {
+      rows[i].classList.toggle("is-lit", centers[i] <= line + 4);
+      const d = Math.abs(centers[i] - line);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    list.style.setProperty("--uc-fill", fill.toFixed(3));
+    const within = lr.top < H * 0.9 && lr.bottom > H * 0.1;
+    let active = within ? best : -1;
+    // Hysteresis: hold the open row unless another is clearly closer to the line.
+    if (active !== lastActive && lastActive >= 0 && within) {
+      const lastC = centers[lastActive];
+      if (lastC !== undefined && Math.abs(lastC - line) - bestDist < 18) {
+        active = lastActive;
+      }
+    }
+    if (active !== lastActive) {
+      openRow(active);
+      lastActive = active;
+    }
+  };
+}
+
 /* ---- Boot --------------------------------------------------------------- */
 async function boot() {
   initA11yAndStats();
@@ -281,7 +562,14 @@ async function boot() {
   initMagnetic();
   initCountUp();
   initFormFeedback();
+  initPipelineStack();
   initPageTransitions();
+
+  // About page: scroll-scrubbed "wired editorial spread", fed the smoothed
+  // Lenis scroll (or native scroll) each frame. null when absent / reduced.
+  const aboutScroll = initAboutScroll();
+  // Homepage Use Cases: the wired, self-opening list.
+  const useCases = initUseCases();
 
   let lenis = null;
   let onScroll = null;
@@ -298,7 +586,12 @@ async function boot() {
         syncTouch: false,
       });
       onScroll = initScrollCoupled(() => ({ y: lenis.scroll }));
-      lenis.on("scroll", (e) => onScroll(e.scroll, e.velocity));
+      lenis.on("scroll", (e) => {
+        onScroll(e.scroll, e.velocity);
+        if (aboutScroll) aboutScroll(e.scroll, e.velocity);
+        if (useCases) useCases();
+      });
+      window.lenis = lenis; // expose the smooth-scroll instance for scroll-driven UI
       const raf = (time) => {
         lenis.raf(time);
         requestAnimationFrame(raf);
@@ -320,14 +613,25 @@ async function boot() {
       "scroll",
       () => {
         const y = window.scrollY;
-        onScroll(y, y - lastY);
+        const v = y - lastY;
+        onScroll(y, v);
+        if (aboutScroll) aboutScroll(y, v);
+        if (useCases) useCases();
         lastY = y;
         clearTimeout(settle);
-        settle = setTimeout(() => onScroll(window.scrollY, 0), 120);
+        settle = setTimeout(() => {
+          onScroll(window.scrollY, 0);
+          if (aboutScroll) aboutScroll(window.scrollY, 0);
+          if (useCases) useCases();
+        }, 120);
       },
       { passive: true },
     );
   }
+
+  if (aboutScroll)
+    aboutScroll(window.lenis ? window.lenis.scroll : window.scrollY, 0);
+  if (useCases) useCases();
 
   initAnchors(lenis);
 

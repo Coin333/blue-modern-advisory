@@ -74,6 +74,13 @@ const HUBS = [
 ];
 const HUB_HREF = "capabilities.html";
 
+// Open a capability: the ring carousel now lives on the capabilities page, so
+// navigate there and land on the matching card (carousel.js reads ?card=N on
+// load and glides the ring to it). Hub index maps 1:1 to card index.
+function openHub(idx) {
+  window.location.href = HUB_HREF + "?card=" + idx;
+}
+
 const Y_BOT = -17,
   Y_TOP = 15,
   FLOORS = 15;
@@ -290,9 +297,17 @@ export function initHeroNetwork(canvas) {
     function (tex) {
       tex.mapping = THREE.EquirectangularReflectionMapping;
       tex.colorSpace = THREE.SRGBColorSpace;
+      // crisper panorama at full render: max anisotropy + trilinear mips kill
+      // the pixelation/shimmer where the orbit looks across the skyline at a
+      // grazing angle (the main source of the "pixelated" look)
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.needsUpdate = true;
       scene.background = tex;
       scene.backgroundIntensity = 0.5; // dim it so the glowing tower stays the hero
-      scene.backgroundBlurriness = 0.08; // soft depth behind the lattice
+      scene.backgroundBlurriness = 0.05; // a hair of depth, sharper than before
     },
     undefined,
     function () {
@@ -648,7 +663,7 @@ export function initHeroNetwork(canvas) {
     popPinned = false;
   });
   pop.addEventListener("click", () => {
-    window.location.href = HUB_HREF;
+    if (lastHub >= 0) openHub(lastHub); // jump to the card this popup is showing
   });
 
   // --- Guided-tour card: a wider, FIXED card above the hero text. It does not
@@ -664,7 +679,7 @@ export function initHeroNetwork(canvas) {
   const tTitle = tourPop.querySelector(".bma-tour-pop__tt");
   const tBody = tourPop.querySelector(".bma-tour-pop__b");
   tourPop.addEventListener("click", () => {
-    window.location.href = HUB_HREF;
+    if (tourShown >= 0) openHub(tourShown); // jump to the card the tour is on
   });
 
   // --- Interaction -------------------------------------------------------
@@ -768,7 +783,7 @@ export function initHeroNetwork(canvas) {
     settle = 0;
     velAz *= 1.25; // gentle throw; velAz already holds the smoothed swivel speed
     velEl *= 1.25;
-    if (dragMoved < 6 && hoverHub >= 0) window.location.href = HUB_HREF; // tap = open
+    if (dragMoved < 6 && hoverHub >= 0) openHub(hoverHub); // tap = jump to card
   }
   window.addEventListener("pointermove", onPointer, { passive: true });
   window.addEventListener("pointermove", onDrag, { passive: true });

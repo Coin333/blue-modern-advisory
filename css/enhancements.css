@@ -173,22 +173,11 @@ html.bma-leaving #root {
   animation: bma-hero-rise 0.8s 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ---- FAQ accordion: swap fixed max-height for the smooth grid trick ------ */
-/* (matches .uc-detail; removes the 260px clip risk on long answers) */
-.faq-answer {
-  display: grid;
-  grid-template-rows: 0fr;
-  max-height: none;
-  transition: grid-template-rows 0.34s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.faq-item.open .faq-answer {
-  grid-template-rows: 1fr;
-  max-height: none;
-}
-.faq-answer-inner {
-  overflow: hidden;
-  min-height: 0;
-}
+/* ---- FAQ accordion: the reveal is now a JS-measured height (styles.css +
+   app.js initFaq) on the redesigned connector-rail FAQ. The grid-rows trick
+   collapsed here (1fr resolved to just the overflow-hidden item's padding,
+   compounded by #faq's content-visibility), so it was removed in favour of the
+   exact, never-clipping height animation. ------------------------------------ */
 
 /* ---- Nav: keep dormant scrolled state, add hairline + tighten ----------- */
 .nav-wrapper {
@@ -420,8 +409,908 @@ html.bma-leaving #root {
    after first paint. Progressive enhancement: ignored where unsupported. */
 .bridge-section,
 .pricing-section,
-.uc-section,
-#faq {
+.uc-section {
   content-visibility: auto;
   contain-intrinsic-size: auto 700px;
+}
+/* #faq is intentionally excluded: its answers animate to a JS-measured height,
+   and content-visibility's size containment zeroed that height out. */
+
+/* ==========================================================================
+   About page - "wired editorial spread"
+   Header B (thesis lede) / Team B (FT roster) / What A (facing spread) /
+   CTA C (margin-note close). One recurring left spine wire + a node bead at
+   each heading + two-digit serif index numerals, threaded down all four
+   sections. Self-contained, fresh `.aw-*` namespace (no collision with the
+   legacy .about-* layers). Loads after styles.css so it wins by cascade.
+
+   Reveal model: content is fully visible by default (no-JS / reduced-motion
+   safe). enhance.js adds `.aw-armed` only when motion is allowed, which arms
+   the pre-animation state; the IntersectionObserver then adds `.is-in` to
+   play the entrance. Never reuses the base `.reveal` class (which is cloaked
+   at opacity:0 and never un-hidden under normal motion).
+   ========================================================================== */
+
+.aw {
+  --aw-pad: 2.6rem; /* content inset; the bead math depends on this being fixed */
+  --aw-wire-x: 0.55rem; /* spine wire x, from the section border-box left */
+  --aw-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  position: relative;
+  padding: clamp(2.75rem, 6vw, 4.5rem) 0 clamp(2.75rem, 6vw, 4.5rem)
+    var(--aw-pad);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The spine wire: 1px vertical gradient, fading to transparent at both ends. */
+.aw::before {
+  content: "";
+  position: absolute;
+  left: var(--aw-wire-x);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    var(--blue-steel) 12%,
+    var(--blue) 50%,
+    var(--blue-steel) 88%,
+    transparent 100%
+  );
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+/* A single node bead seated on the wire, level with the section's heading. */
+.aw-head {
+  position: relative;
+}
+.aw-head::before {
+  content: "";
+  position: absolute;
+  top: 0.66em;
+  left: calc(var(--aw-wire-x) - var(--aw-pad) - 4px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 4px var(--blue-light);
+}
+
+/* ---- shared type tokens ------------------------------------------------- */
+.aw-eyebrow {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--blue-steel);
+  margin: 0 0 1.05rem;
+  letter-spacing: 0.005em;
+}
+.aw-h1 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(2rem, 4.6vw, 3.1rem);
+  line-height: 1.13;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+  margin: 0 0 1.4rem;
+}
+.aw-h1-a,
+.aw-h1-b {
+  display: block;
+}
+.aw-h1-b {
+  font-style: italic;
+  color: var(--blue);
+}
+.aw-h2 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 1.1rem;
+}
+.aw-h2 em {
+  font-style: italic;
+  color: var(--blue);
+}
+.aw-standfirst {
+  font-family: var(--aw-sans);
+  font-size: 1.02rem;
+  line-height: 1.62;
+  color: var(--muted);
+  margin: 0;
+  max-width: 46ch;
+}
+.aw-num {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--blue-mist);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+/* ---- Header B: thesis lede + right-margin node-field ---------------------- */
+.aw--header .aw-col {
+  max-width: 62%;
+}
+.aw--header::after {
+  content: "";
+  position: absolute;
+  top: clamp(2.75rem, 6vw, 4.5rem);
+  bottom: clamp(2.75rem, 6vw, 4.5rem);
+  right: 0;
+  width: 32%;
+  background-image: radial-gradient(var(--blue-mist) 1.1px, transparent 1.4px);
+  background-size: 21px 21px;
+  opacity: 0.28;
+  -webkit-mask-image: radial-gradient(
+    120% 78% at 100% 50%,
+    #000,
+    transparent 72%
+  );
+  mask-image: radial-gradient(120% 78% at 100% 50%, #000, transparent 72%);
+  pointer-events: none;
+}
+
+/* ---- Team B: FT contributor roster --------------------------------------- */
+.aw-team-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+.aw-stat {
+  font-family: var(--aw-sans);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  color: var(--blue-steel);
+  margin: 1.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+.aw-stat b {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--blue);
+}
+.aw-stat i {
+  font-style: normal;
+  color: var(--blue-mist);
+  padding: 0 0.2rem;
+}
+.aw-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.aw-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1.05fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: 0 1.1rem;
+  padding: 1.15rem 0.65rem;
+  border-top: 1px solid var(--rule);
+  transition: background 0.2s ease;
+}
+.aw-roster li:last-child .aw-row,
+.aw-row:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+.aw-row:hover {
+  background: var(--blue-pale);
+}
+.aw-row-num {
+  font-size: 0.82rem;
+}
+.aw-row:hover .aw-row-num {
+  color: var(--blue);
+}
+.aw-row-photo {
+  position: relative;
+  width: 54px;
+  height: 54px;
+}
+.aw-row-photo img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--rule);
+}
+.aw-row-avatar {
+  display: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-pale);
+  color: var(--blue);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+}
+.aw-row-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.aw-row-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+  line-height: 1.15;
+  color: var(--ink);
+}
+.aw-row-role {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--blue-steel);
+}
+.aw-row-cred {
+  font-family: var(--aw-sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.aw-row-link {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--blue-mist);
+  color: var(--blue);
+  text-decoration: none;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+.aw-row-link:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* ---- What A: facing spread + journal contents index ---------------------- */
+.aw-spread {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) 1px minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+.aw-spread::before {
+  content: "";
+  grid-column: 2;
+  width: 1px;
+  justify-self: center;
+  align-self: stretch;
+  background: var(--rule);
+}
+.aw-spread-voice {
+  grid-column: 1;
+}
+.aw-spread-index {
+  grid-column: 3;
+  align-self: start;
+}
+.aw--what .aw-num {
+  display: block;
+  font-size: 0.82rem;
+  margin: 0 0 0.85rem;
+}
+.aw-spread-body {
+  font-family: var(--aw-sans);
+  font-size: 0.95rem;
+  line-height: 1.66;
+  color: var(--muted);
+  margin: 0;
+  max-width: 52ch;
+}
+.aw-services-label {
+  font-family: var(--aw-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--blue-steel);
+  margin: 0 0 0.4rem;
+}
+.aw-toc {
+  list-style: none;
+  margin: 0 0 1.4rem;
+  padding: 0;
+}
+.aw-toc li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  padding: 0.62rem 0;
+}
+.aw-toc-num {
+  font-family: var(--font-heading);
+  color: var(--blue-mist);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  width: 1.9rem;
+}
+.aw-toc-name {
+  font-family: var(--aw-sans);
+  font-size: 0.92rem;
+  color: var(--ink);
+  flex: none;
+}
+.aw-toc-lead {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--blue-mist);
+  transform: translateY(-3px);
+  opacity: 0.7;
+}
+.aw-toc-link {
+  font-family: var(--aw-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.aw-toc-link:hover {
+  color: var(--ink);
+}
+
+/* ---- CTA C: margin-note close (warm paper panel) ------------------------- */
+.aw--close {
+  border-bottom: 0;
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  padding: clamp(2.5rem, 5vw, 3.5rem) clamp(1.75rem, 4vw, 2.75rem)
+    clamp(2.5rem, 5vw, 3.5rem) var(--aw-pad);
+  background: var(--bg-warm);
+  border: 1px solid var(--orange-border);
+  border-radius: var(--radius-card);
+}
+.aw-close-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+.aw-close-h {
+  font-size: clamp(1.6rem, 3.2vw, 2.35rem);
+  line-height: 1.16;
+  max-width: 20ch;
+  margin-bottom: 1.6rem;
+}
+.aw-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--aw-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+  background: var(--ink);
+  border-radius: var(--radius-pill);
+  padding: 0.8rem 1.55rem;
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.aw-close-btn:hover {
+  background: var(--blue);
+  box-shadow: var(--shadow-md);
+}
+.aw-close-margin {
+  position: relative;
+  border-left: 1px solid var(--rule);
+  padding-left: clamp(1.25rem, 2.5vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.aw-close-margin::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blue-mist);
+}
+.aw-note {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 0.98rem;
+  line-height: 1.4;
+  color: var(--blue-steel);
+  margin: 0;
+  position: relative;
+  padding-left: 1.05rem;
+}
+.aw-note::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blue-mist);
+}
+
+/* ---- Armed entrance (only when JS present + motion allowed) -------------- */
+.aw-armed::before {
+  transform: scaleY(0);
+}
+.aw-armed.is-in::before {
+  transform: scaleY(1);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aw-armed .aw-head::before {
+  opacity: 0;
+  transform: scale(0.2);
+}
+.aw-armed.is-in .aw-head::before {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.4s ease 0.5s,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s;
+}
+.aw-armed .aw-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.aw-armed.is-in .aw-reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aw-armed.is-in .aw-team-grid .aw-reveal:nth-child(2),
+.aw-armed.is-in .aw-close-margin {
+  transition-delay: 0.12s;
+}
+.aw-armed.is-in .aw-roster .aw-row:nth-child(1) {
+  transition-delay: 0.06s;
+}
+.aw-armed.is-in .aw-roster .aw-row:nth-child(2) {
+  transition-delay: 0.16s;
+}
+.aw-armed.is-in .aw-roster .aw-row:nth-child(3) {
+  transition-delay: 0.26s;
+}
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 820px) {
+  .aw {
+    --aw-pad: 1.5rem;
+  }
+  .aw--header .aw-col {
+    max-width: 100%;
+  }
+  .aw--header::after {
+    display: none;
+  }
+  .aw-team-grid {
+    grid-template-columns: 1fr;
+  }
+  .aw-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 0.35rem 0.9rem;
+    padding: 1.1rem 0.4rem;
+  }
+  .aw-row-photo,
+  .aw-row-photo img,
+  .aw-row-avatar {
+    width: 48px;
+    height: 48px;
+  }
+  .aw-row-cred {
+    grid-column: 2 / -1;
+    margin-top: 0.4rem;
+  }
+  .aw-row-link {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .aw-spread,
+  .aw-close-grid {
+    grid-template-columns: 1fr;
+  }
+  .aw-spread::before {
+    display: none;
+  }
+  .aw-close-margin {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+    padding-left: 0;
+    padding-top: 1.4rem;
+  }
+  .aw-close-margin::before {
+    left: 0;
+    top: -4px;
+  }
+}
+
+/* ---- Reduced motion: render the final state, no entrance ----------------- */
+@media (prefers-reduced-motion: reduce) {
+  .aw-armed::before,
+  .aw-armed.is-in::before,
+  .aw-armed .aw-head::before,
+  .aw-armed.is-in .aw-head::before,
+  .aw-armed .aw-reveal,
+  .aw-armed.is-in .aw-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   About page - scroll-driven layer (tied to the Lenis scroll).
+   enhance.js publishes per-section --aw-in (entrance 0..1), --aw-fill (spine
+   draw 0..1) and --aw-par (header parallax px), plus a page-level --aw-vel
+   (scroll-velocity charge 0..1), every scroll frame. These rules are appended
+   last so they win, and every value falls back to its finished state
+   (var(..., 1)) so a no-JS or reduced-motion visit shows the page fully drawn
+   and static. This supersedes the earlier `.aw-armed` IntersectionObserver
+   entrance, whose JS no longer runs (those rules are now inert).
+   ========================================================================== */
+
+/* The left spine wire draws itself down each section as you read it. */
+.aw::before {
+  transform: scaleY(var(--aw-fill, 1));
+}
+
+/* Heading node bead: lights as the section enters, glows with scroll velocity. */
+.aw-head::before {
+  opacity: clamp(0, calc((var(--aw-in, 1) - 0.12) * 6), 1);
+  transform: scale(clamp(0.3, calc(0.3 + var(--aw-in, 1) * 0.7), 1));
+  box-shadow:
+    0 0 0 4px var(--blue-light),
+    0 0 calc(var(--aw-vel, 0) * 14px) calc(var(--aw-vel, 0) * 5px)
+      rgba(31, 78, 115, calc(0.05 + var(--aw-vel, 0) * 0.5));
+}
+
+/* Content blocks rise + fade on their own entrance progress, staggered via
+   a per-block delay (--aw-d) subtracted from the section's --aw-in. */
+.aw-reveal {
+  --aw-d: 0;
+  --aw-p: clamp(
+    0,
+    calc((var(--aw-in, 1) - var(--aw-d)) / (1 - var(--aw-d))),
+    1
+  );
+  opacity: var(--aw-p);
+  transform: translateY(calc((1 - var(--aw-p)) * 20px));
+}
+.aw-roster li:nth-child(1) .aw-reveal {
+  --aw-d: 0.06;
+}
+.aw-roster li:nth-child(2) .aw-reveal {
+  --aw-d: 0.14;
+}
+.aw-roster li:nth-child(3) .aw-reveal {
+  --aw-d: 0.22;
+}
+.aw-spread-index.aw-reveal {
+  --aw-d: 0.1;
+}
+.aw-close-margin.aw-reveal {
+  --aw-d: 0.12;
+}
+
+/* Header node-field drifts against the scroll for depth. */
+.aw--header::after {
+  transform: translateY(var(--aw-par, 0));
+}
+
+/* Journal contents leaders draw left-to-right with the section fill. */
+.aw-toc-lead {
+  transform: translateY(-3px) scaleX(var(--aw-fill, 1));
+  transform-origin: left center;
+}
+
+/* CTA margin-note beads light in sequence as the close panel enters. */
+.aw-note::before {
+  opacity: clamp(0, calc((var(--aw-in, 1) - var(--aw-nd, 0)) * 4), 1);
+}
+.aw-note:nth-child(1) {
+  --aw-nd: 0.15;
+}
+.aw-note:nth-child(2) {
+  --aw-nd: 0.3;
+}
+.aw-note:nth-child(3) {
+  --aw-nd: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw::before,
+  .aw-head::before,
+  .aw-reveal,
+  .aw--header::after,
+  .aw-toc-lead,
+  .aw-note::before {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   About page - a little more life (ambient + arrival + hover), layered on top
+   of the scroll-driven system. Continuous and entrance motion is gated behind
+   prefers-reduced-motion: no-preference; hover feedback stays for everyone.
+   ========================================================================== */
+
+/* A lit node-dot leads every eyebrow, echoing the network motif. */
+.aw-eyebrow {
+  position: relative;
+}
+.aw-eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 0.55rem 0.12em 0;
+  border-radius: 50%;
+  background: var(--blue);
+  vertical-align: middle;
+}
+
+/* Roster: a gentle photo zoom + name tint on hover. */
+.aw-row-photo {
+  overflow: hidden;
+  border-radius: 50%;
+}
+.aw-row-photo img {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aw-row:hover .aw-row-photo img {
+  transform: scale(1.06);
+}
+.aw-row-name {
+  transition: color 0.2s ease;
+}
+.aw-row:hover .aw-row-name {
+  color: var(--blue);
+}
+
+/* Practice-area index behaves like an interactive contents page. */
+.aw-toc-name {
+  transition:
+    color 0.2s ease,
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aw-toc-lead {
+  transition:
+    opacity 0.2s ease,
+    border-color 0.2s ease;
+}
+.aw-toc li:hover .aw-toc-name {
+  color: var(--blue);
+  transform: translateX(4px);
+}
+.aw-toc li:hover .aw-toc-lead {
+  opacity: 1;
+  border-color: var(--blue-steel);
+}
+
+/* CTA button: a touch of lift on hover (composes with the magnetic translate). */
+.aw-close-btn {
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aw-close-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Eyebrow node-dots breathe, like live nodes. */
+  .aw-eyebrow::before {
+    animation: aw-node-pulse 3.4s ease-in-out infinite;
+  }
+  @keyframes aw-node-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(31, 78, 115, 0.28);
+    }
+    50% {
+      transform: scale(1.18);
+      box-shadow: 0 0 0 4px rgba(31, 78, 115, 0);
+    }
+  }
+
+  /* Header node-field slowly drifts, independent of its scroll parallax. */
+  .aw--header::after {
+    animation: aw-dot-drift 26s linear infinite;
+  }
+  @keyframes aw-dot-drift {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 21px 21px;
+    }
+  }
+
+  /* Header arrival: the lede rises in on load (it sits above the scroll, so it
+     needs its own entrance rather than a scroll-scrubbed one). */
+  .aw--header .aw-eyebrow {
+    animation: aw-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .aw--header .aw-h1-a {
+    animation: aw-rise 0.8s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .aw--header .aw-h1-b {
+    animation: aw-rise 0.8s 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .aw--header .aw-standfirst {
+    animation: aw-rise 0.8s 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes aw-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ==========================================================================
+   Use Cases - "the wired, self-opening list" (homepage #use-cases)
+   A pipeline spine threads the list; a node bead per row lights as you scroll
+   past it, and the row nearest the reading line auto-opens. enhance.js
+   publishes --uc-fill (spine draw 0..1) plus the is-lit / uc-row--open classes
+   from the Lenis scroll. Generic icons are gone: the node bead is the marker
+   and the chevron is a bespoke CSS plus. Falls back to the plain click
+   accordion (app.js) with JS off or reduced motion.
+   ========================================================================== */
+
+.uc-list {
+  position: relative;
+}
+
+/* Retune the trigger grid to: node bead | text | plus. */
+.uc-trigger {
+  grid-template-columns: 30px 1fr 30px;
+  gap: 18px;
+}
+.uc-detail-inner {
+  padding-left: 48px;
+}
+
+/* Pipeline spine: a 1px gradient wire that draws down the list with scroll. */
+.uc-spine {
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    var(--blue-steel) 6%,
+    var(--blue) 50%,
+    var(--blue-steel) 94%,
+    transparent 100%
+  );
+  transform: scaleY(var(--uc-fill, 1));
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+/* Node bead marker (replaces the icon), seated on the spine beside each title. */
+.uc-node {
+  position: relative;
+}
+.uc-node::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 0.6rem;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  border-radius: 50%;
+  background: var(--blue-mist);
+  opacity: 0.45;
+  transition:
+    background 0.3s ease,
+    opacity 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.uc-row.is-lit .uc-node::before {
+  background: var(--blue);
+  opacity: 1;
+}
+.uc-row--open .uc-node::before {
+  background: var(--blue);
+  opacity: 1;
+  transform: scale(1.3);
+  box-shadow: 0 0 0 5px var(--blue-light);
+}
+
+/* Chevron -> a bespoke CSS plus that becomes a minus when the row opens. */
+.uc-icon {
+  position: relative;
+  font-size: 0;
+}
+.uc-icon::before,
+.uc-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.25s ease,
+    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.uc-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.uc-trigger:hover .uc-icon {
+  border-color: var(--blue-steel);
+}
+.uc-row--open .uc-icon::after {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+.uc-row--open .uc-title {
+  color: var(--blue);
+}
+
+@media (max-width: 640px) {
+  .uc-trigger {
+    grid-template-columns: 26px 1fr 26px;
+    gap: 14px;
+  }
+  .uc-detail-inner {
+    padding-left: 40px;
+  }
+  .uc-spine {
+    left: 13px;
+  }
+  .uc-node::before {
+    left: 13px;
+  }
+}
+
+/* Motion off: full spine, lit beads, and the plain click accordion. */
+@media (prefers-reduced-motion: reduce) {
+  .uc-spine {
+    transform: none;
+  }
+  .uc-node::before {
+    opacity: 1;
+    background: var(--blue);
+    transition: none;
+  }
 }
