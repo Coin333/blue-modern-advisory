@@ -282,56 +282,32 @@ async function boot() {
   initCountUp();
   initFormFeedback();
   initPageTransitions();
-  initHeroScrollDamp();
-
-  // ── Slow the scroll while leaving the hero ────────────────────────────────
-  // The hero is a heavy WebGL scene; at full scroll speed the render can't keep
-  // pace and the exit looks janky. Damp the wheel delta while the hero is in
-  // view so you ease out of it slowly and the render keeps up. No rAF/inertia —
-  // each wheel event still scrolls immediately, just less, so it stays 1:1 and
-  // never feels like Lenis. The non-passive listener is attached only while the
-  // hero is on screen, so the rest of the page keeps native fast-path scrolling.
-  function initHeroScrollDamp() {
-    if (reduceMotion) return;
-    const hero = document.querySelector(".hero-og");
-    if (!hero) return;
-    const FACTOR = 0.45; // ~2.2x slower while easing out of the hero
-    let attached = false;
-    function onWheel(e) {
-      if (e.ctrlKey) return; // pinch-zoom: leave it alone
-      if (window.scrollY >= hero.offsetHeight - 4) return; // past hero: native
-      e.preventDefault();
-      const px =
-        e.deltaMode === 1
-          ? e.deltaY * 16 // lines -> px
-          : e.deltaMode === 2
-            ? e.deltaY * window.innerHeight // pages -> px
-            : e.deltaY;
-      window.scrollBy(0, px * FACTOR);
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.some((en) => en.isIntersecting);
-        if (visible && !attached) {
-          window.addEventListener("wheel", onWheel, { passive: false });
-          attached = true;
-        } else if (!visible && attached) {
-          window.removeEventListener("wheel", onWheel, { passive: false });
-          attached = false;
-        }
-      },
-      { threshold: 0 },
-    );
-    io.observe(hero);
-  }
 
   let lenis = null;
   let onScroll = null;
 
-  // Native scroll only. Smooth-scroll libraries (Lenis) drive scrolling from a
-  // main-thread rAF loop, so they stutter whenever that thread is busy (e.g. the
-  // hero WebGL render). Native scroll runs on the compositor thread and stays
-  // smooth regardless. `lenis` stays null, so the native path below runs.
+  if (!reduceMotion) {
+    try {
+      const mod =
+        await import("https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.mjs");
+      const Lenis = mod.default || mod.Lenis;
+      lenis = new Lenis({
+        lerp: 0.12,
+        wheelMultiplier: 1,
+        smoothWheel: true,
+        syncTouch: false,
+      });
+      onScroll = initScrollCoupled(() => ({ y: lenis.scroll }));
+      lenis.on("scroll", (e) => onScroll(e.scroll, e.velocity));
+      const raf = (time) => {
+        lenis.raf(time);
+        requestAnimationFrame(raf);
+      };
+      requestAnimationFrame(raf);
+    } catch (err) {
+      lenis = null; // CDN/feature unavailable: fall back to native scroll
+    }
+  }
 
   // Fallback (reduced motion OR Lenis failed): native scroll listener. Native
   // scroll fires no event at rest, so debounce a trailing reset to settle the

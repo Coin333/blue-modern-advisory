@@ -796,6 +796,30 @@ export function initHeroNetwork(canvas) {
   );
   io.observe(host);
 
+  // ── Render lighter while scrolling (never freeze the model) ───────────────
+  // The loop keeps calling step() every frame, so the model never stops moving.
+  // We only drop the WebGL resolution during active scroll, so the heavy
+  // full-screen fill stops fighting Lenis, then restore full crispness once the
+  // scroll settles. devicePixelRatio is the runtime quality lever (antialias is
+  // fixed at construction). Lenis scrolls the real page, so native scroll/wheel/
+  // touch events still fire and drive this.
+  const DPR_FULL = Math.min(window.devicePixelRatio || 1, 1.4);
+  const DPR_SCROLL = Math.min(window.devicePixelRatio || 1, 0.9);
+  let qualityTimer = 0;
+  function setDpr(dpr) {
+    if (renderer.getPixelRatio() === dpr) return;
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(width, height, false);
+  }
+  function onUserScroll() {
+    setDpr(DPR_SCROLL);
+    clearTimeout(qualityTimer);
+    qualityTimer = setTimeout(() => setDpr(DPR_FULL), 180);
+  }
+  ["scroll", "wheel", "touchmove"].forEach((evt) =>
+    window.addEventListener(evt, onUserScroll, { passive: true }),
+  );
+
   const v = new THREE.Vector3();
   let lastNow = performance.now();
   let frame = 0,
