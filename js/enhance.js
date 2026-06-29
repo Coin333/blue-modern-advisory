@@ -282,6 +282,48 @@ async function boot() {
   initCountUp();
   initFormFeedback();
   initPageTransitions();
+  initHeroScrollDamp();
+
+  // ── Slow the scroll while leaving the hero ────────────────────────────────
+  // The hero is a heavy WebGL scene; at full scroll speed the render can't keep
+  // pace and the exit looks janky. Damp the wheel delta while the hero is in
+  // view so you ease out of it slowly and the render keeps up. No rAF/inertia —
+  // each wheel event still scrolls immediately, just less, so it stays 1:1 and
+  // never feels like Lenis. The non-passive listener is attached only while the
+  // hero is on screen, so the rest of the page keeps native fast-path scrolling.
+  function initHeroScrollDamp() {
+    if (reduceMotion) return;
+    const hero = document.querySelector(".hero-og");
+    if (!hero) return;
+    const FACTOR = 0.45; // ~2.2x slower while easing out of the hero
+    let attached = false;
+    function onWheel(e) {
+      if (e.ctrlKey) return; // pinch-zoom: leave it alone
+      if (window.scrollY >= hero.offsetHeight - 4) return; // past hero: native
+      e.preventDefault();
+      const px =
+        e.deltaMode === 1
+          ? e.deltaY * 16 // lines -> px
+          : e.deltaMode === 2
+            ? e.deltaY * window.innerHeight // pages -> px
+            : e.deltaY;
+      window.scrollBy(0, px * FACTOR);
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.some((en) => en.isIntersecting);
+        if (visible && !attached) {
+          window.addEventListener("wheel", onWheel, { passive: false });
+          attached = true;
+        } else if (!visible && attached) {
+          window.removeEventListener("wheel", onWheel, { passive: false });
+          attached = false;
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(hero);
+  }
 
   let lenis = null;
   let onScroll = null;
