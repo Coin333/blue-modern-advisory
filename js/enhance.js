@@ -124,7 +124,7 @@ function initScrollCoupled(getScroll) {
 function initMagnetic() {
   if (reduceMotion || !finePointer) return;
   const targets = document.querySelectorAll(
-    ".hero-og-btn-primary, .pricing-cta-primary, .final-cta-btn-primary, " +
+    ".pricing-cta-primary, .final-cta-btn-primary, " +
       ".ft__cta-btn, .auth-btn-primary",
   );
   targets.forEach((el) => {
@@ -286,30 +286,10 @@ async function boot() {
   let lenis = null;
   let onScroll = null;
 
-  if (!reduceMotion) {
-    try {
-      const mod =
-        await import("https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.mjs");
-      const Lenis = mod.default || mod.Lenis;
-      // Frame-based lerp (snappier, less "floaty lag") instead of a 1.05s
-      // time-eased glide. Lower repaint pressure per scroll input.
-      lenis = new Lenis({
-        lerp: 0.12,
-        wheelMultiplier: 1,
-        smoothWheel: true,
-        syncTouch: false,
-      });
-      onScroll = initScrollCoupled(() => ({ y: lenis.scroll }));
-      lenis.on("scroll", (e) => onScroll(e.scroll, e.velocity));
-      const raf = (time) => {
-        lenis.raf(time);
-        requestAnimationFrame(raf);
-      };
-      requestAnimationFrame(raf);
-    } catch (err) {
-      lenis = null; // CDN/feature unavailable: fall back to native scroll
-    }
-  }
+  // Native scroll only. Smooth-scroll libraries (Lenis) drive scrolling from a
+  // main-thread rAF loop, so they stutter whenever that thread is busy (e.g. the
+  // hero WebGL render). Native scroll runs on the compositor thread and stays
+  // smooth regardless. `lenis` stays null, so the native path below runs.
 
   // Fallback (reduced motion OR Lenis failed): native scroll listener. Native
   // scroll fires no event at rest, so debounce a trailing reset to settle the

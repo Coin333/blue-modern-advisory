@@ -790,36 +790,11 @@ export function initHeroNetwork(canvas) {
     (es) =>
       es.forEach((en) => {
         running = en.isIntersecting;
-        if (running) kick();
+        if (running) loop();
       }),
     { threshold: 0.01 },
   );
   io.observe(host);
-
-  // ── Pause the hero render while the user is actively scrolling ────────────
-  // This WebGL scene re-renders a full-screen blurred 360 panorama + lattice
-  // every frame, and the observer above keeps it running until the hero is
-  // ~99% scrolled away. Rendering it during scroll starves the main thread and
-  // makes scrolling choppy near the top. The hero is leaving the viewport as
-  // you scroll, so freeze it during active scroll and resume once it settles.
-  let scrolling = false;
-  let scrollIdleTimer = 0;
-  function kick() {
-    cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(loop);
-  }
-  function onUserScroll() {
-    scrolling = true;
-    clearTimeout(scrollIdleTimer);
-    scrollIdleTimer = setTimeout(() => {
-      scrolling = false;
-      lastNow = performance.now(); // avoid a dt jump on the first frame back
-      if (running) kick();
-    }, 140);
-  }
-  ["scroll", "wheel", "touchmove"].forEach((evt) =>
-    window.addEventListener(evt, onUserScroll, { passive: true }),
-  );
 
   const v = new THREE.Vector3();
   let lastNow = performance.now();
@@ -908,17 +883,22 @@ export function initHeroNetwork(canvas) {
       n.pulse += 0.018 * slow;
       if (n.flare > 0) n.flare = Math.max(0, n.flare - 0.007 * slow);
       const breathe = 0.5 + 0.5 * Math.sin(n.pulse);
-      const hot = h === hoverHub ? 1 : 0;
+      // big hubs light up when hovered, when their tour card is showing, or when
+      // their popup is pinned - eased per hub so the glow swells in and fades out
+      const litTarget =
+        h === hoverHub || h === tourHub || (popPinned && h === lastHub) ? 1 : 0;
+      n.glow = (n.glow || 0) + (litTarget - (n.glow || 0)) * 0.12;
+      const hot = n.glow;
       n.fade = Math.min(1, n.fade + 0.02);
       n.core.position.set(n.pos[0], n.pos[1], n.pos[2]);
       n.halo.position.set(n.pos[0], n.pos[1], n.pos[2]);
-      const hs = 12 + breathe * 2.4 + n.flare * 8 + hot * 4;
+      const hs = 12 + breathe * 2.4 + n.flare * 8 + hot * 6.5;
       n.halo.scale.set(hs, hs, 1);
       n.halo.material.opacity =
-        (0.32 + breathe * 0.16 + n.flare * 0.55 + hot * 0.3) * n.fade;
-      const cs = 2.6 + breathe * 0.5 + hot * 0.8 + n.flare * 1.2;
+        (0.32 + breathe * 0.16 + n.flare * 0.55 + hot * 0.5) * n.fade;
+      const cs = 2.6 + breathe * 0.5 + hot * 1.2 + n.flare * 1.2;
       n.core.scale.set(cs, cs, 1);
-      n.core.material.opacity = (0.85 + hot * 0.15) * n.fade;
+      n.core.material.opacity = Math.min(1, (0.85 + hot * 0.35) * n.fade);
     }
 
     rebuildLinks(hoverHub);
@@ -1182,7 +1162,7 @@ export function initHeroNetwork(canvas) {
   let rafId = 0;
   let revealed = false;
   function loop() {
-    if (!running || scrolling) return; // resumed via kick() once scroll settles
+    if (!running) return;
     step();
     if (!revealed) {
       // hold the first (heavy/blank) frame at opacity 0, then reveal the
