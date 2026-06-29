@@ -6,6 +6,10 @@
    Click-drag grabs the model and turns it freely; it resumes the orbit when
    idle. Only the three.js core is a dependency; the rest is generated. */
 import * as THREE from "./vendor/three.module.js";
+import { GLTFLoader } from "./vendor/GLTFLoader.js";
+
+// Set false to restore the original procedural "tower of light".
+const USE_MODEL = true;
 
 const NODE = { mist: 0x9ab3c4, steel: 0x6f8fa6, orange: 0xd98a4a };
 
@@ -251,6 +255,39 @@ function haloTexture() {
   t.needsUpdate = true;
   return t;
 }
+// The node marker: a clean stroked ring (the BMA node motif). Drawn white so the
+// per-sprite color tints it; a faint inner feather keeps it from aliasing hard.
+function ringTexture() {
+  const s = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  ctx.strokeStyle = "rgba(255,255,255,1)";
+  ctx.lineWidth = s * 0.085;
+  ctx.beginPath();
+  ctx.arc(s / 2, s / 2, s * 0.36, 0, Math.PI * 2);
+  ctx.stroke();
+  const t = new THREE.CanvasTexture(c);
+  t.needsUpdate = true;
+  return t;
+}
+// The fill that drops into the ring when a node is selected: a solid disc sized
+// to sit just inside the ring, with a soft edge so it reads clean at any scale.
+function discTexture() {
+  const s = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s * 0.31);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.75, "rgba(255,255,255,1)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const t = new THREE.CanvasTexture(c);
+  t.needsUpdate = true;
+  return t;
+}
 
 function fogTexture() {
   const s = 128;
@@ -280,10 +317,10 @@ export function initHeroNetwork(canvas) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     alpha: true,
-    antialias: true,
+    antialias: false, // MSAA buffers are the biggest GPU-memory cost; the DPR cap below keeps edges acceptable
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.4)); // cap fill cost
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.2)); // cap fill cost (lowered to shrink the framebuffer)
   renderer.setSize(width, height, false);
 
   const scene = new THREE.Scene();
@@ -292,28 +329,51 @@ export function initHeroNetwork(canvas) {
   // and the tower sits inside it - the camera orbit pans across the skyline.
   // A night cityscape keeps the additive glow readable. Missing/failed file
   // silently falls back to the transparent canvas over the CSS navy gradient.
-  new THREE.TextureLoader().load(
+  // Reveal gate: keep the hero canvas hidden (the CSS navy gradient shows
+  // through, which is clean - not a blocky half-loaded background) until BOTH
+  // the panorama and the 3D tower are ready, then fade them in together on one
+  // frame. The headline copy still reveals immediately, so the heavy model
+  // never blocks the text. panoReady/modelReady are flipped by the loaders
+  // below and read by the render loop.
+  let panoReady = false;
+  let modelReady = !USE_MODEL; // procedural mode has no model to wait on
+  // Apply the panorama once, whichever format the browser loads first.
+  function applyPano(tex) {
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    // crisper panorama at full render: max anisotropy + trilinear mips kill
+    // the pixelation/shimmer where the orbit looks across the skyline at a
+    // grazing angle (the main source of the "pixelated" look)
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    tex.needsUpdate = true;
+    scene.background = tex;
+    scene.backgroundIntensity = 0.5; // dim it so the glowing tower stays the hero
+    scene.backgroundBlurriness = 0.05; // a hair of depth, sharper than before
+    panoReady = true; // background is up; the reveal gate can clear once the
+    // tower is ready too
+  }
+  // Try AVIF, then WebP, then the original JPEG. The modern formats are ~62-71%
+  // lighter at the same 4096x2048 fidelity; the JPEG stays as the universal
+  // fallback. If none load, the navy gradient shows through the clear canvas.
+  const panoLoader = new THREE.TextureLoader();
+  const panoSrcs = [
+    "assets/city360.avif",
+    "assets/city360.webp",
     "assets/city360.jpg",
-    function (tex) {
-      tex.mapping = THREE.EquirectangularReflectionMapping;
-      tex.colorSpace = THREE.SRGBColorSpace;
-      // crisper panorama at full render: max anisotropy + trilinear mips kill
-      // the pixelation/shimmer where the orbit looks across the skyline at a
-      // grazing angle (the main source of the "pixelated" look)
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.generateMipmaps = true;
-      tex.needsUpdate = true;
-      scene.background = tex;
-      scene.backgroundIntensity = 0.5; // dim it so the glowing tower stays the hero
-      scene.backgroundBlurriness = 0.05; // a hair of depth, sharper than before
-    },
-    undefined,
-    function () {
-      /* no panorama present - keep the navy gradient showing through */
-    },
-  );
+  ];
+  (function tryPano(i) {
+    if (i >= panoSrcs.length) {
+      panoReady = true; // no panorama loaded: the navy gradient stands in, so
+      // don't hold the reveal waiting on a background that will never arrive
+      return;
+    }
+    panoLoader.load(panoSrcs[i], applyPano, undefined, function () {
+      tryPano(i + 1);
+    });
+  })(0);
 
   // far plane clears the full tower + fog (base ~-220) from the pulled-back
   // overview, so the deep structure never clips as the camera orbits
@@ -351,6 +411,8 @@ export function initHeroNetwork(canvas) {
     DAMP = 0.86;
   const sharedGlow = glowTexture();
   const haloGlow = haloTexture();
+  const ringTex = ringTexture();
+  const discTex = discTexture();
 
   // --- Tower nodes -------------------------------------------------------
   const HOMES = buildTower();
@@ -390,7 +452,8 @@ export function initHeroNetwork(canvas) {
     blending: THREE.AdditiveBlending,
     sizeAttenuation: true,
   });
-  tower.add(new THREE.Points(pointsGeo, pointsMat));
+  const nodePoints = new THREE.Points(pointsGeo, pointsMat);
+  tower.add(nodePoints);
 
   // --- Fog bank: the tower sinks into drifting mist toward its base -------
   // Soft sprites, denser and wider toward the bottom, veil the deep shaft and
@@ -447,22 +510,32 @@ export function initHeroNetwork(canvas) {
       sp.scale.set(sc, sc, 1);
       return sp;
     };
-    const halo = mk(11, haloGlow),
-      core = mk(3, sharedGlow);
-    core.userData.hub = idx;
-    tower.add(halo);
-    tower.add(core);
+    // Node, not orb: a soft bloom (only on select), the ring outline that marks
+    // the node, and a fill disc that fills the ring in when the node is selected.
+    const bloom = mk(12, haloGlow),
+      ring = mk(3.4, ringTex),
+      fill = mk(3.4, discTex);
+    ring.userData.hub = idx;
+    fill.userData.hub = idx;
+    tower.add(bloom);
+    tower.add(ring);
+    tower.add(fill);
     const ang = (idx / HUBS.length) * Math.PI * 2 + 0.4;
-    const inside = idx % 2 === 1; // alternate: through the volume / orbiting outside
-    const rad = inside ? 2 + Math.random() * 3 : HXB + 3 + Math.random() * 5;
+    // Every hub orbits OUTSIDE the building on one clean ring (no more "inside
+    // the volume" placement that buried glowing popups in the tower). The ring
+    // clears the model's deepest face (~26 units at the current MODEL_TARGET)
+    // and stays well inside the camera orbit (r=60), so the hubs read as lights
+    // floating around the tower, never embedded in it.
+    const rad = 32 + Math.random() * 8;
     return {
       def,
       color,
-      halo,
-      core,
+      bloom,
+      ring,
+      fill,
       pos: [
         Math.cos(ang) * rad,
-        Y_BOT + ((idx + 0.5) / HUBS.length) * (Y_TOP - Y_BOT),
+        10 + ((idx + 0.5) / HUBS.length) * 12,
         Math.sin(ang) * rad,
       ],
       vel: [
@@ -475,7 +548,7 @@ export function initHeroNetwork(canvas) {
       fade: 0,
     };
   });
-  const HB = { x0: -13, x1: 13, y0: -19, y1: 23, z0: -12, z1: 12 };
+  const HB = { x0: -13, x1: 13, y0: 10, y1: 23, z0: -12, z1: 12 };
 
   // --- Links -------------------------------------------------------------
   // The tower's link topology is fixed by the home lattice (nodes only sway a
@@ -513,18 +586,17 @@ export function initHeroNetwork(canvas) {
   const linksGeo = new THREE.BufferGeometry();
   linksGeo.setAttribute("position", new THREE.BufferAttribute(linkPos, 3));
   linksGeo.setAttribute("color", new THREE.BufferAttribute(linkCol, 3));
-  tower.add(
-    new THREE.LineSegments(
-      linksGeo,
-      new THREE.LineBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.52,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    ),
+  const linkLines = new THREE.LineSegments(
+    linksGeo,
+    new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.52,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
   );
+  tower.add(linkLines);
   // bake the static link colours once - they never change
   for (let k = 0; k < nStatic; k++) {
     const t = sT[k],
@@ -638,6 +710,177 @@ export function initHeroNetwork(canvas) {
   );
   tower.add(packets);
 
+  // ── Real skyscraper model (replaces the procedural lattice) ───────────────
+  // The .3DS export is auto-fit: measure its bounding box, center it, scale the
+  // largest dimension to MODEL_TARGET scene units, and sit it where the tower
+  // stood. Drawn in the same "made of light" style (glowing edges + a faint
+  // dark fill) so it fits the navy scene with no extra lights; the cinematic
+  // camera orbit supplies the motion. If it loads sideways or off-size, adjust
+  // the MODEL_ROT_* / MODEL_TARGET tunables below.
+  if (USE_MODEL) {
+    const MODEL_URL = "assets/london_skyscraper.glb";
+    const MODEL_TARGET = 170; // building height in scene units. This tower's
+    // footprint is ~51 deep; past ~310 the camera orbit (r=60) clips through it.
+    const CAM_START_Y = 24; // put the model's top near the camera's start height
+    const FADE_HIGH = 0; // fully opaque at/above this world-Y ...
+    const FADE_LOW = -200; // ... fully faded by here (dissolves as it descends)
+    const MODEL_ROT_X = 0; // radians; try -Math.PI / 2 if it lies flat
+    const MODEL_ROT_Y = 0;
+    const MODEL_ROT_Z = 0;
+    const MODEL_AT = new THREE.Vector3(TOWER_X, -1, 0); // where the tower sat
+
+    // hide the procedural lattice; keep the hubs, panorama, fog, and camera
+    nodePoints.visible = false;
+    linkLines.visible = false;
+    packets.visible = false;
+
+    const modelGroup = new THREE.Group();
+    modelGroup.position.copy(MODEL_AT);
+    modelGroup.rotation.set(MODEL_ROT_X, MODEL_ROT_Y, MODEL_ROT_Z);
+    scene.add(modelGroup);
+
+    // Keep the model's own textured PBR materials - that is the detail. A small
+    // light rig makes them read against the navy panorama, and double-sided
+    // rendering keeps any flipped winding from punching holes in the facade.
+    const keyLight = new THREE.DirectionalLight(0xeaf2fb, 1.35);
+    keyLight.position.set(0.6, 1, 0.7);
+    const rimLight = new THREE.DirectionalLight(0xa9bcff, 0.6);
+    rimLight.position.set(-0.7, 0.3, -0.6);
+    const ambLight = new THREE.HemisphereLight(0xb9d2ea, 0x0b1d2e, 0.95);
+    scene.add(keyLight, rimLight, ambLight);
+
+    function restoreLattice() {
+      nodePoints.visible = true;
+      linkLines.visible = true;
+      packets.visible = true;
+      modelReady = true; // model failed: clear the reveal gate with the
+      // procedural lattice standing in, so the hero never hangs blank
+    }
+
+    new GLTFLoader().load(
+      MODEL_URL,
+      function (gltf) {
+        const root = gltf.scene;
+        // Height fade as an OPAQUE dissolve, not alpha blending. Blending the
+        // whole tower made overlapping faces pop in and out as the camera
+        // swiveled (transparent objects get re-sorted by distance every frame,
+        // and a 60-mesh building has no stable order). Instead each material
+        // stays opaque - writing depth normally, so the depth test keeps the
+        // silhouette solid from every angle.
+        //
+        // Two fade modes, picked per material:
+        //  - Lit facade: discard fragments on an ordered 4x4 Bayer pattern
+        //    weighted by world-Y, for a true see-through dissolve into the dark.
+        //  - Emissive lights (the red flares): a 1-bit discard pattern reads as
+        //    black speckle on small bright features, so those DIM smoothly to
+        //    dark instead (no discard) - same downward fade, clean pixels.
+        function addHeightFade(m) {
+          const e = m.emissive;
+          const eI = m.emissiveIntensity == null ? 1 : m.emissiveIntensity;
+          const isLight =
+            (!!e && eI > 0 && e.r + e.g + e.b > 0.05) ||
+            /flare|light|lamp|glow|neon|led/i.test(m.name || "");
+          if (!isLight) {
+            // Structure renders opaque so the depth test holds the silhouette
+            // steady - the transparent facade/glass was what popped on swivel.
+            m.transparent = false;
+            m.depthWrite = true;
+          }
+          // Lights keep the model's OWN blending. Forcing them opaque switched
+          // off their soft alpha glow and left the bare sprite quads showing as
+          // solid red stars/rectangles.
+          m.onBeforeCompile = function (shader) {
+            shader.uniforms.uFadeLow = { value: FADE_LOW };
+            shader.uniforms.uFadeHigh = { value: FADE_HIGH };
+            shader.vertexShader =
+              "varying float vFadeY;\n" +
+              shader.vertexShader.replace(
+                "#include <project_vertex>",
+                "#include <project_vertex>\n  vFadeY = (modelMatrix * vec4(transformed, 1.0)).y;",
+              );
+            const bayerFn =
+              "float bmaBayer(vec2 fc){\n" +
+              "  int xi = int(mod(fc.x, 4.0));\n" +
+              "  int yi = int(mod(fc.y, 4.0));\n" +
+              "  int idx = xi + yi * 4;\n" +
+              "  float lut[16];\n" +
+              "  lut[0]=0.0; lut[1]=8.0; lut[2]=2.0; lut[3]=10.0;\n" +
+              "  lut[4]=12.0; lut[5]=4.0; lut[6]=14.0; lut[7]=6.0;\n" +
+              "  lut[8]=3.0; lut[9]=11.0; lut[10]=1.0; lut[11]=9.0;\n" +
+              "  lut[12]=15.0; lut[13]=7.0; lut[14]=13.0; lut[15]=5.0;\n" +
+              "  float thr = 0.0;\n" +
+              "  for (int k = 0; k < 16; k++) { if (k == idx) thr = lut[k]; }\n" +
+              "  return (thr + 0.5) / 16.0;\n" +
+              "}\n";
+            const lightBody =
+              "#include <dithering_fragment>\n  float bmaFade = smoothstep(uFadeLow, uFadeHigh, vFadeY);\n  gl_FragColor.rgb *= bmaFade;\n  gl_FragColor.a *= bmaFade;";
+            const ditherBody =
+              "#include <dithering_fragment>\n  float bmaFade = smoothstep(uFadeLow, uFadeHigh, vFadeY);\n  if (bmaFade < bmaBayer(gl_FragCoord.xy)) discard;";
+            shader.fragmentShader =
+              "uniform float uFadeLow;\nuniform float uFadeHigh;\nvarying float vFadeY;\n" +
+              (isLight ? "" : bayerFn) +
+              shader.fragmentShader.replace(
+                "#include <dithering_fragment>",
+                isLight ? lightBody : ditherBody,
+              );
+          };
+        }
+        root.traverse(function (o) {
+          if (!o.isMesh) return;
+          o.frustumCulled = false;
+          if (o.geometry && !o.geometry.attributes.normal) {
+            o.geometry.computeVertexNormals();
+          }
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach(function (m) {
+            if (!m) return;
+            // Keep this Sketchfab model's authored PBR (glass, clearcoat, lit
+            // windows). Clobbering metalness/roughness here would flatten the
+            // glass into chalk - the detail IS in those materials.
+            m.side = THREE.DoubleSide;
+            addHeightFade(m);
+            m.needsUpdate = true;
+          });
+        });
+        const box = new THREE.Box3().setFromObject(root);
+        if (box.isEmpty()) {
+          restoreLattice();
+          return;
+        }
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        root.position.sub(center); // center the model on the group origin
+        const s = MODEL_TARGET / (size.y || 1); // fit by height (10x)
+        modelGroup.scale.setScalar(s);
+        // anchor the TOP near the camera's start height; the rest descends and fades
+        modelGroup.position.set(
+          MODEL_AT.x,
+          CAM_START_Y - (size.y * s) / 2,
+          MODEL_AT.z,
+        );
+        modelGroup.add(root);
+        console.info(
+          "[hero] skyscraper fit - height",
+          Math.round(size.y * s),
+          "footprint",
+          Math.round(size.x * s),
+          Math.round(size.z * s),
+          "| top@",
+          CAM_START_Y,
+        );
+        modelReady = true; // tower is in the scene; clear the reveal gate so it
+        // fades in together with the panorama on the next frame
+      },
+      undefined,
+      function (err) {
+        console.warn("[hero] skyscraper failed to load", err);
+        restoreLattice();
+      },
+    );
+  }
+
   // --- Hover popup -------------------------------------------------------
   const pop = document.createElement("div");
   pop.className = "bma-node-pop";
@@ -692,11 +935,16 @@ export function initHeroNetwork(canvas) {
   // without ever changing the rotation axis.
   const orbit = { az: -0.5, el: 1.0, r: 16 }; // start zoomed into the top
   const look = new THREE.Vector3(ORBIT_C.x, Y_TOP - 1, ORBIT_C.z); // smoothed look-at
+  // Never aim below this height: keeps the frame on the upper/mid tower so the
+  // dissolving base stays out of view, and when examining a low hub the look-at
+  // sits above the camera, so the camera pitches UP rather than down.
+  const LOOK_Y_MIN = 10;
   const lookTarget = new THREE.Vector3();
   const lookVel = new THREE.Vector3(); // spring velocity for the look-at
   const SLOW_MIN = 0.12; // bullet-time scale while a capability popup is open
   // scripted tour
-  const OV = { az: 0.7, el: 0.42, r: 60 }; // pulled-out overview framing
+  const OV = { az: 0.7, el: 0.3, r: 60 }; // pulled-out overview framing (kept low
+  // so the camera never tilts down onto the dissolving base)
   const T_INTRO = 2.5,
     T_PAUSE = 3,
     T_FLY = 1.7,
@@ -800,16 +1048,33 @@ export function initHeroNetwork(canvas) {
   }
   window.addEventListener("resize", resize);
 
+  // Only burn frames when the hero is actually on-screen AND the tab is visible.
+  // Two independent gates (scroll position + page visibility) feed one `running`
+  // flag, so a backgrounded tab or a scrolled-away hero costs zero GPU. Quality
+  // is untouched: when visible and on-screen it renders exactly as before.
   let running = true;
+  let onScreen = true;
+  let pageVisible = !document.hidden;
+  function syncRunning() {
+    const next = onScreen && pageVisible;
+    if (next === running) return;
+    running = next;
+    if (running) startLoop(); // resume from a cleanly-stopped frame chain
+  }
   const io = new IntersectionObserver(
     (es) =>
       es.forEach((en) => {
-        running = en.isIntersecting;
-        if (running) loop();
+        onScreen = en.isIntersecting;
+        syncRunning();
       }),
     { threshold: 0.01 },
   );
   io.observe(host);
+  function onVisibility() {
+    pageVisible = !document.hidden;
+    syncRunning();
+  }
+  document.addEventListener("visibilitychange", onVisibility);
 
   // ── Render lighter while scrolling (never freeze the model) ───────────────
   // The loop keeps calling step() every frame, so the model never stops moving.
@@ -818,8 +1083,8 @@ export function initHeroNetwork(canvas) {
   // scroll settles. devicePixelRatio is the runtime quality lever (antialias is
   // fixed at construction). Lenis scrolls the real page, so native scroll/wheel/
   // touch events still fire and drive this.
-  const DPR_FULL = Math.min(window.devicePixelRatio || 1, 1.4);
-  const DPR_SCROLL = Math.min(window.devicePixelRatio || 1, 0.9);
+  const DPR_FULL = Math.min(window.devicePixelRatio || 1, 1.2);
+  const DPR_SCROLL = Math.min(window.devicePixelRatio || 1, 0.7);
   const SCROLL_FRAME_MS = 1000 / 30; // cap the hero to ~30fps while scrolling
   let qualityTimer = 0;
   let scrolling = false; // true during active scroll; gates render rate in loop()
@@ -936,15 +1201,22 @@ export function initHeroNetwork(canvas) {
       n.glow = (n.glow || 0) + (litTarget - (n.glow || 0)) * 0.12;
       const hot = n.glow;
       n.fade = Math.min(1, n.fade + 0.02);
-      n.core.position.set(n.pos[0], n.pos[1], n.pos[2]);
-      n.halo.position.set(n.pos[0], n.pos[1], n.pos[2]);
-      const hs = 12 + breathe * 2.4 + n.flare * 8 + hot * 6.5;
-      n.halo.scale.set(hs, hs, 1);
-      n.halo.material.opacity =
-        (0.32 + breathe * 0.16 + n.flare * 0.55 + hot * 0.5) * n.fade;
-      const cs = 2.6 + breathe * 0.5 + hot * 1.2 + n.flare * 1.2;
-      n.core.scale.set(cs, cs, 1);
-      n.core.material.opacity = Math.min(1, (0.85 + hot * 0.35) * n.fade);
+      n.ring.position.set(n.pos[0], n.pos[1], n.pos[2]);
+      n.fill.position.set(n.pos[0], n.pos[1], n.pos[2]);
+      n.bloom.position.set(n.pos[0], n.pos[1], n.pos[2]);
+      // Node ring: always present, breathes gently, brightens a touch when lit.
+      const rs = 3.2 + breathe * 0.45 + hot * 1.1 + n.flare * 0.8;
+      n.ring.scale.set(rs, rs, 1);
+      n.ring.material.opacity =
+        (0.42 + breathe * 0.12 + hot * 0.4 + n.flare * 0.3) * n.fade;
+      // Fill disc: empty by default, fills the node in as it gets selected.
+      n.fill.scale.set(rs * 0.9, rs * 0.9, 1);
+      n.fill.material.opacity =
+        Math.min(1, hot * 0.95 + n.flare * 0.25) * n.fade;
+      // Soft bloom: only blooms behind a selected node.
+      const bs = 9 + breathe * 1.4 + hot * 7;
+      n.bloom.scale.set(bs, bs, 1);
+      n.bloom.material.opacity = (hot * 0.5 + n.flare * 0.16) * n.fade;
     }
 
     rebuildLinks(hoverHub);
@@ -1080,6 +1352,7 @@ export function initHeroNetwork(canvas) {
       [orbit.r, vR] = smoothDamp(orbit.r, tR, vR, omO, dt);
     }
     // smooth the look-at toward its target every frame (all states, dt-based)
+    if (lookTarget.y < LOOK_Y_MIN) lookTarget.y = LOOK_Y_MIN; // never aim at the base
     [look.x, lookVel.x] = smoothDamp(look.x, lookTarget.x, lookVel.x, omL, dt);
     [look.y, lookVel.y] = smoothDamp(look.y, lookTarget.y, lookVel.y, omL, dt);
     [look.z, lookVel.z] = smoothDamp(look.z, lookTarget.z, lookVel.z, omL, dt);
@@ -1121,7 +1394,7 @@ export function initHeroNetwork(canvas) {
     if (pointer.inside && !tourLocked) {
       raycaster.setFromCamera(ndc, camera);
       const hit = raycaster.intersectObjects(
-        hubs.map((h) => h.core),
+        hubs.map((h) => h.ring),
         false,
       )[0];
       hoverHub = hit ? hit.object.userData.hub : -1;
@@ -1177,7 +1450,7 @@ export function initHeroNetwork(canvas) {
         popH = pop.offsetHeight || 220;
       }
       // project the dot, then ease the card toward it so the follow is smooth
-      n.core.getWorldPosition(v).project(camera);
+      n.ring.getWorldPosition(v).project(camera);
       const sx = (v.x * 0.5 + 0.5) * width,
         sy = (-v.y * 0.5 + 0.5) * height;
       if (justOpened) {
@@ -1206,9 +1479,15 @@ export function initHeroNetwork(canvas) {
   }
 
   let rafId = 0;
-  let revealed = false;
+  let looping = false; // guards against a second concurrent RAF chain
+  let revealed = false; // canvas (panorama + tower) has been faded in
+  let copyShown = false; // headline copy has been revealed
   function loop() {
-    if (!running) return;
+    if (!running) {
+      looping = false;
+      rafId = 0;
+      return;
+    }
     // While scrolling, render at ~30fps (the model keeps moving, just at half
     // the frame rate) so the heavy hero stops fighting the scroll. Full 60fps
     // returns the moment scrolling settles. Stacks with the resolution drop.
@@ -1221,26 +1500,45 @@ export function initHeroNetwork(canvas) {
       lastStepAt = now;
     }
     step();
-    if (!revealed) {
-      // hold the first (heavy/blank) frame at opacity 0, then reveal the
-      // already-rendered scene next frame so the fade starts from real content
+    // Copy reveals on the first rendered frame - text over the navy gradient,
+    // never blocked by the heavy model stream.
+    if (!copyShown) {
+      copyShown = true;
+      host.classList.add("is-revealed");
+    }
+    // Canvas reveals only once BOTH the panorama and the tower are ready, on a
+    // frame that already shows them - so the background never appears first and
+    // sits blocky/empty while the model streams in.
+    if (!revealed && panoReady && modelReady) {
       revealed = true;
-      requestAnimationFrame(() => {
-        canvas.classList.add("is-on");
-        host.classList.add("is-revealed"); // cascade the copy in on one clock
-      });
+      requestAnimationFrame(() => canvas.classList.add("is-on"));
     }
     rafId = requestAnimationFrame(loop);
   }
+  // Start exactly one render loop. The IntersectionObserver's initial callback
+  // also calls startLoop(); the `looping` guard makes that a no-op, so the hero
+  // never runs two RAF chains at once (was doubling render work at load).
+  function startLoop() {
+    if (looping || !running) return;
+    looping = true;
+    rafId = requestAnimationFrame(loop);
+  }
   host.classList.add("hero-armed"); // about to render: drive the copy reveal
-  loop();
+  startLoop();
   // safety net: never leave the copy hidden if the first frame is delayed
   setTimeout(() => host.classList.add("is-revealed"), 2500);
+  // safety net: if the tower stream is very slow or stalls, don't hold the hero
+  // blank forever - let the loop reveal whatever has loaded after a few seconds.
+  setTimeout(() => {
+    panoReady = true;
+    modelReady = true;
+  }, 6000);
 
   return function destroy() {
     running = false;
     cancelAnimationFrame(rafId);
     io.disconnect();
+    document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pointermove", onPointer);
     window.removeEventListener("pointermove", onDrag);
     canvas.removeEventListener("pointerdown", onDown);

@@ -22,13 +22,12 @@ Any static host works (Vercel, Netlify, GitHub Pages, S3) — there is no build 
 | `index.html`        | `/` — hero, trusted-by marquee, what-we-build, pricing, use cases, FAQ |
 | `capabilities.html` | `/capabilities` — tool hub, 7-row capability matrix, delivery model    |
 | `about.html`        | `/about` — team, practice areas, final CTA                             |
-| `get-started.html`  | `/get-started` — sign-up form                                          |
 
 ## Structure
 
 ```
 site/
-  index.html  capabilities.html  about.html  get-started.html
+  index.html  capabilities.html  about.html
   css/styles.css      # the original compiled stylesheet, unmodified except a small
                       # appended block for the mobile menu + scroll-reveal classes
   js/app.js           # mobile nav, FAQ + use-case accordions, scroll reveal, form handlers
@@ -42,7 +41,8 @@ site/
 - Scroll-reveal is progressive enhancement: a 1.4s fail-safe and `prefers-reduced-motion`
   guarantee no content ever stays hidden.
 - The use-case accordion detail copy was recovered from the original JS bundle.
-- Internal links are rewritten to the static filenames; `Sign In` / `Login` point at
-  `get-started.html` since the original auth pages were not part of this copy.
+- Internal links are rewritten to the static filenames. Every call to action points
+  at the firm's Calendly booking link; there is no in-app auth.
+- `robots.txt` and `sitemap.xml` are included for crawlers.
 
 Built with D1 Vibe Coding

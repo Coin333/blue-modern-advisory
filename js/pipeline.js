@@ -66,6 +66,18 @@
   let anchor = null; // scroll px at which the pin begins (wrap reaches hold line)
   let pinDist = 0;
   let jumpFreeze = false; // true while the hero glides past us to the carousel
+  // idle auto-advance: when the section is in view and the user stops scrolling,
+  // the pipeline gently keeps building itself forward; any scroll takes over
+  // again and scrubs directly. The rendered fill eases toward its target so the
+  // hand-off between scroll and auto-play stays smooth (no snap).
+  let autoP = 0; // idle auto-advance progress target
+  let curP = 0; // eased rendered progress (what we actually draw)
+  let lastScrollV = NaN;
+  let idleMs = 0;
+  let lastFrameT = performance.now();
+  const AUTO_SECS = 7; // idle: seconds to build the whole pipeline 0 -> 1
+  const IDLE_DELAY = 900; // ms after scroll stops before auto-play resumes
+  const EASE_OMEGA = 7; // how snappily the drawn fill follows its target
   function measure() {
     const vh = window.innerHeight;
     const wrapH = wrap.offsetHeight;
@@ -78,16 +90,39 @@
   function frame() {
     if (jumpFreeze) return; // held as a static block during the hero->carousel jump
     if (anchor === null) measure();
+    const now = performance.now();
+    let dt = (now - lastFrameT) / 1000;
+    lastFrameT = now;
+    if (dt > 0.05) dt = 0.05;
+    if (!(dt > 0)) dt = 0.016;
     if (pinDist <= 0) {
       curT = 0;
       wrap.style.transform = "";
+      autoP = curP = 0;
       render(0);
       return;
     }
-    const t = clamp(scrollPos() - anchor, 0, pinDist); // 0 before, full after
+    const s = scrollPos();
+    const t = clamp(s - anchor, 0, pinDist); // 0 before, full after
     curT = t;
     wrap.style.transform = t ? "translateY(" + t.toFixed(1) + "px)" : "";
-    render(clamp(t / pinDist, 0, 1));
+    const scrollP = clamp(t / pinDist, 0, 1);
+
+    // While the user scrolls, the scroll position drives the fill directly. Once
+    // it settles, the build gently auto-advances forward; auto never drags the
+    // fill below the scroll position, so scrolling always takes over cleanly.
+    const moving = Math.abs(s - lastScrollV) > 0.5;
+    lastScrollV = s;
+    if (moving) {
+      autoP = scrollP; // follow the scroll (keeps auto and scroll in sync)
+      idleMs = 0;
+    } else {
+      idleMs += dt * 1000;
+      if (idleMs > IDLE_DELAY) autoP = Math.min(1, autoP + dt / AUTO_SECS);
+    }
+    const target = Math.max(scrollP, autoP);
+    curP += (target - curP) * (1 - Math.exp(-EASE_OMEGA * dt)); // smooth follow
+    render(curP);
   }
 
   // Run a rAF loop only while the tall section is on (or near) screen; that is
@@ -102,13 +137,18 @@
   function start() {
     if (active) return;
     active = true;
+    lastFrameT = performance.now(); // avoid a huge dt after an idle gap
+    lastScrollV = NaN;
     loop();
   }
   function stop() {
     if (!active) return;
     active = false;
     cancelAnimationFrame(rafId);
-    render(section.getBoundingClientRect().top < 0 ? 1 : 0); // full above, empty below
+    const end = section.getBoundingClientRect().top < 0 ? 1 : 0; // full above, empty below
+    curP = autoP = end;
+    lastScrollV = NaN;
+    render(end);
   }
 
   if ("IntersectionObserver" in window) {
@@ -131,12 +171,15 @@
       jumpFreeze = true;
       curT = 0;
       wrap.style.transform = ""; // drop the pin so the page scrolls past naturally
+      curP = autoP = 1;
       render(1); // show the wire fully drawn as you fly by, not mid-scrub
     },
     unfreeze() {
       if (!jumpFreeze) return;
       jumpFreeze = false;
       anchor = null; // geometry may have shifted; re-measure on the next frame
+      lastFrameT = performance.now();
+      lastScrollV = NaN;
       if (!active) render(section.getBoundingClientRect().top < 0 ? 1 : 0);
     },
   };

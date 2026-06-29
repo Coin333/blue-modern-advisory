@@ -14,7 +14,7 @@
       '<a href="index.html">Home</a>' +
       '<a href="capabilities.html">Capabilities</a>' +
       '<a href="about.html">About</a>' +
-      '<a class="bma-mnav-cta" href="get-started.html">Sign In</a>';
+      '<a class="bma-mnav-cta" href="https://calendly.com/bluemodernadvisory/30min" target="_blank" rel="noreferrer noopener">Book a Call</a>';
     document.body.appendChild(menu);
 
     function close() {
@@ -95,18 +95,114 @@
     requestAnimationFrame(loop);
   }
 
-  /* ---- Use-case accordion ---- */
+  /* ---- Use-case showcase: tab selector + cross-fading stage. Gently
+     auto-advances while in view and pauses for good on first interaction.
+     Proper tabs pattern (arrow-key nav, roving tabindex). ---- */
   function initUseCases() {
-    document.querySelectorAll(".uc-row").forEach(function (row) {
-      var trigger = row.querySelector(".uc-trigger");
-      var detail = row.querySelector(".uc-detail");
-      if (!trigger) return;
-      trigger.addEventListener("click", function () {
-        var open = row.classList.toggle("uc-row--open");
-        if (detail) detail.classList.toggle("uc-detail--open", open);
-        trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    var showcase = document.querySelector("[data-uc-showcase]");
+    if (!showcase) return;
+    var tabs = [].slice.call(showcase.querySelectorAll(".uc-tab"));
+    var panels = [].slice.call(showcase.querySelectorAll(".uc-panel"));
+    if (tabs.length < 2 || panels.length !== tabs.length) return;
+    var reduce =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var current = 0;
+
+    function select(i, focus) {
+      i = (i + tabs.length) % tabs.length;
+      current = i;
+      // Sweep all tabs so the connector "trail" (.is-filled on every tab above
+      // the active one) and the active state stay in sync on any jump.
+      tabs.forEach(function (tab, k) {
+        var active = k === i;
+        tab.classList.toggle("is-active", active);
+        tab.classList.toggle("is-filled", k < i);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+        tab.tabIndex = active ? 0 : -1;
+        panels[k].classList.toggle("is-active", active);
+      });
+      if (focus) tabs[i].focus();
+    }
+
+    // gentle auto-advance, gated to when the section is on screen
+    var AUTO_MS = 5500;
+    var timer = 0;
+    var paused = false;
+    var inView = false;
+    function startTimer() {
+      if (timer || paused || reduce) return;
+      timer = setInterval(function () {
+        if (!paused && inView) select(current + 1, false);
+      }, AUTO_MS);
+    }
+    function stopTimer() {
+      if (timer) {
+        clearInterval(timer);
+        timer = 0;
+      }
+    }
+    function pausePermanently() {
+      paused = true;
+      stopTimer();
+    }
+
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener("click", function () {
+        pausePermanently();
+        select(i, false);
+      });
+      tab.addEventListener("keydown", function (e) {
+        var k = e.key;
+        if (k === "ArrowDown" || k === "ArrowRight") {
+          e.preventDefault();
+          pausePermanently();
+          select(current + 1, true);
+        } else if (k === "ArrowUp" || k === "ArrowLeft") {
+          e.preventDefault();
+          pausePermanently();
+          select(current - 1, true);
+        } else if (k === "Home") {
+          e.preventDefault();
+          pausePermanently();
+          select(0, true);
+        } else if (k === "End") {
+          e.preventDefault();
+          pausePermanently();
+          select(tabs.length - 1, true);
+        }
       });
     });
+    // first hover/interaction anywhere on the showcase stops the auto-tour
+    showcase.addEventListener("pointerenter", pausePermanently);
+
+    // .is-live (added the first time the showcase scrolls into view) gates the
+    // diagrams' build animations in CSS, so each diagram assembles itself on
+    // arrival and again whenever its tab is selected - never off-screen.
+    function goLive() {
+      showcase.classList.add("is-live");
+    }
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            inView = e.isIntersecting;
+            if (inView) {
+              goLive();
+              startTimer();
+            } else {
+              stopTimer();
+            }
+          });
+        },
+        { threshold: 0.25 },
+      );
+      io.observe(showcase);
+    } else {
+      inView = true;
+      goLive();
+      startTimer();
+    }
   }
 
   /* ---- Scroll reveal (progressive enhancement) ---- */
@@ -165,44 +261,29 @@
     }, 1400);
   }
 
-  /* ---- Get-started: enable submit when fields filled ---- */
-  function initAuthForm() {
-    var form = document.querySelector(".auth-form");
-    if (!form) return;
-    var btn = form.querySelector(".auth-btn-primary");
-    var inputs = form.querySelectorAll("input[required]");
-    function check() {
-      if (form.dataset.done) return;
-      var ok = true;
-      inputs.forEach(function (i) {
-        if (!i.value.trim()) ok = false;
-      });
-      if (btn) btn.disabled = !ok;
-    }
-    inputs.forEach(function (i) {
-      i.addEventListener("input", check);
-    });
-    check();
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      if (!btn) return;
-      form.dataset.done = "1";
-      btn.disabled = true;
-      btn.innerHTML =
-        '<span class="auth-spinner" aria-hidden="true"></span>Creating your workspace';
-      setTimeout(function () {
-        btn.innerHTML = "Thanks - we'll be in touch.";
-      }, 1100);
-    });
-  }
-
-  /* ---- Newsletter: no-op submit ---- */
+  /* ---- Newsletter: open a real email instead of faking a subscribe ----
+     There is no newsletter backend yet, so rather than flip the button to
+     "Subscribed" and silently discard the address, open a pre-filled email to
+     the firm. Honest, and it actually reaches someone. ---- */
   function initNewsletter() {
     document.querySelectorAll(".ft__nws-row").forEach(function (form) {
       form.addEventListener("submit", function (e) {
         e.preventDefault();
+        var input = form.querySelector(".ft__nws-input");
+        var email = input && input.value ? input.value.trim() : "";
         var btn = form.querySelector(".ft__nws-btn");
-        if (btn) btn.textContent = "Subscribed";
+        var subject = encodeURIComponent("Subscribe to BMA insights");
+        var body = encodeURIComponent(
+          "Please add " +
+            (email || "me") +
+            " to the Blue Modern Advisory insights list.",
+        );
+        window.location.href =
+          "mailto:reem@bluemodernadvisory.com?subject=" +
+          subject +
+          "&body=" +
+          body;
+        if (btn) btn.textContent = "Opening email";
       });
     });
   }
@@ -213,7 +294,6 @@
     initFaqRail();
     initUseCases();
     initReveal();
-    initAuthForm();
     initNewsletter();
   }
   if (document.readyState === "loading") {

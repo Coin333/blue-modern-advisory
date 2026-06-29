@@ -24306,3 +24306,1768 @@ a.trusted-marquee-item {
     transition: none;
   }
 }
+
+/* ===== Use Cases showcase: 6 bespoke input->system->output diagrams
+   (per-slug scoped, palette-locked, each with its own reduced-motion freeze) ===== */
+
+/* --- deal-sourcing --- */
+
+/* =========================================================
+   BASE / RESTING STATE  (no animation running -> looks complete & calm)
+   - document head + lines visible
+   - result rows + amber check visible
+   - flow dots rest at opacity 0
+   ========================================================= */
+.uc-viz--deal-sourcing .ds-doc-head,
+.uc-viz--deal-sourcing .ds-doc-line,
+.uc-viz--deal-sourcing .ds-row,
+.uc-viz--deal-sourcing .ds-check {
+  opacity: 1;
+}
+.uc-viz--deal-sourcing .ds-dot {
+  opacity: 0;
+}
+
+/* =========================================================
+   BUILD ANIMATIONS  (run ONCE on activate; fill-mode both; never infinite)
+   Gated: .uc-showcase.is-live .uc-panel.is-active ...
+   ========================================================= */
+
+/* Document page + header settle in first */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-input {
+  animation: ds-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-doc-head {
+  animation: ds-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+/* Three text lines fade in staggered (within 0-0.5s window) */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-doc-line1 {
+  animation: ds-line-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-doc-line2 {
+  animation: ds-line-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-doc-line3 {
+  animation: ds-line-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.42s both;
+}
+
+/* System shell settles (subtle scale/opacity) ~0.5-0.8s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-system {
+  animation: ds-settle 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+  transform-box: fill-box;
+  transform-origin: 220px 150px;
+}
+
+/* Flow dots: leg A (input->system) then leg B (system->output), ONCE.
+   Each runs across the 0.3-1.2s window. Linear travel. */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-dot-a {
+  animation: ds-leg-a 0.45s linear 0.3s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-dot-b {
+  animation: ds-leg-b 0.45s linear 0.75s both;
+}
+
+/* Result rows reveal staggered top->bottom ~0.9-1.6s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-row1 {
+  animation: ds-row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-row2 {
+  animation: ds-row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 1.06s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-row3 {
+  animation: ds-row-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) 1.22s both;
+}
+
+/* Amber check draws in last (the "qualified" beat) ~1.3-1.6s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-check {
+  animation: ds-check-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) 1.3s both;
+}
+
+/* =========================================================
+   AMBIENT LOOP  (the ONLY infinite animation)
+   ========================================================= */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--deal-sourcing .ds-pulse {
+  transform-box: fill-box;
+  transform-origin: 220px 150px;
+  animation: ds-pulse 4.8s ease-in-out infinite;
+}
+
+/* =========================================================
+   KEYFRAMES
+   ========================================================= */
+@keyframes ds-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes ds-line-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ds-settle {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ds-row-in {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ds-check-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Leg A: dot travels x152 -> x190, fading to 0 by x<=190.
+   INVARIANT: opacity>0 only while cx in [152,190]. Ends at opacity 0. */
+@keyframes ds-leg-a {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  18% {
+    transform: translateX(7px);
+    opacity: 1;
+  }
+  78% {
+    transform: translateX(30px);
+    opacity: 1;
+  } /* cx ~182 */
+  100% {
+    transform: translateX(38px);
+    opacity: 0;
+  } /* cx 190, absorbed */
+}
+
+/* Leg B: dot starts at x250 (opacity 0->1), travels x250 -> x286,
+   fading to 0 by x<=288 (before output card at x>=290).
+   INVARIANT: opacity>0 only while cx in [250,288]. Starts & ends at opacity 0. */
+@keyframes ds-leg-b {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  18% {
+    transform: translateX(6px);
+    opacity: 1;
+  } /* cx ~256 */
+  80% {
+    transform: translateX(32px);
+    opacity: 1;
+  } /* cx ~282 */
+  100% {
+    transform: translateX(36px);
+    opacity: 0;
+  } /* cx 286, faded before output */
+}
+
+/* Ambient pulse: slow breathe */
+@keyframes ds-pulse {
+  0% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION  -> force resolved state, flow dots hidden
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--deal-sourcing * {
+    animation: none !important;
+  }
+  .uc-viz--deal-sourcing .ds-doc-head,
+  .uc-viz--deal-sourcing .ds-doc-line,
+  .uc-viz--deal-sourcing .ds-row,
+  .uc-viz--deal-sourcing .ds-check {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .uc-viz--deal-sourcing .ds-dot {
+    opacity: 0 !important;
+  }
+}
+
+/* --- outbound-tam --- */
+/* Animated "Outbound TAM build" diagram.
+   Base/resting state = fully built & visible (set by the SVG opacity attrs).
+   Builds ONCE when the showcase is live + the panel is active.
+   One infinite loop only: .uc-otam-pulse.
+   Each animatable element carries a --rest custom prop = its resting opacity,
+   so fill-mode:both holds the exact design opacity after the build. */
+
+/* ---- Resting state: flow dots invisible, everything else resolved ---- */
+.uc-viz--outbound-tam .uc-otam-flowA,
+.uc-viz--outbound-tam .uc-otam-flowB {
+  opacity: 0;
+}
+
+/* =====================================================================
+   BUILD-ONCE TIMELINE  (gated: showcase live + panel active)
+   ~1.8s total. Reveal easing cubic-bezier(0.22,1,0.36,1); dot travel linear.
+   ===================================================================== */
+
+/* 0–0.5s: market dots materialize (drift + fade to resting opacity) */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-mkt {
+  animation: otam-mkt-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0s);
+}
+
+/* 0.5–0.8s: system box settles in */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .otam-system {
+  animation: otam-system-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+}
+
+/* dashed connectors fade in alongside the build */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .otam-conn {
+  animation: otam-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
+}
+
+/* 0.3–1.2s: flow dot leg A (x152 -> x190), then leg B (x250 -> x286) */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-flowA {
+  animation: otam-flowA 0.7s linear 0.3s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-flowB {
+  animation: otam-flowB 0.7s linear both;
+  animation-delay: calc(0.7s + var(--d, 0s));
+}
+
+/* 0.9–1.6s: bars scaleX in from left + rank dots pop, staggered top->bottom */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-bar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: otam-bar-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-rank {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: otam-rank-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--outbound-tam
+  .uc-otam-bracket {
+  animation: otam-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.85s both;
+}
+
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-bar1 {
+  animation-delay: 0.9s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-bar2 {
+  animation-delay: 1.06s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-bar3 {
+  animation-delay: 1.22s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-bar4 {
+  animation-delay: 1.38s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-rank1 {
+  animation-delay: 1.02s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-rank2 {
+  animation-delay: 1.18s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-rank3 {
+  animation-delay: 1.34s;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-rank4 {
+  animation-delay: 1.5s;
+}
+
+/* ---- ONLY infinite animation: ambient pulse breathe ---- */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--outbound-tam .uc-otam-pulse {
+  animation: otam-pulse 4.8s ease-in-out infinite;
+}
+
+/* =====================================================================
+   KEYFRAMES  (build keyframes end at var(--rest) so the held frame == design)
+   ===================================================================== */
+
+@keyframes otam-mkt-in {
+  from {
+    opacity: 0;
+    transform: translate(6px, 4px) scale(0.6);
+  }
+  to {
+    opacity: var(--rest, 1);
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes otam-system-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+    transform-origin: 220px 150px;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    transform-origin: 220px 150px;
+  }
+}
+
+@keyframes otam-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: var(--rest, 1);
+  }
+}
+
+/* Leg A: dot rides x152 -> x190 (translateX 0 -> 38px).
+   opacity > 0 ONLY while x in [152,190]; hard 0 at the ends. */
+@keyframes otam-flowA {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  12% {
+    transform: translateX(5px);
+    opacity: 0.9;
+  }
+  80% {
+    transform: translateX(30px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(38px);
+    opacity: 0;
+  } /* arrives x190, absorbed */
+}
+
+/* Leg B: dot starts x250 (translateX 0), fades in, rides to x286 (36px),
+   fully faded by x<=288. opacity > 0 ONLY while x in [250,286]. */
+@keyframes otam-flowB {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  } /* x250, emitted */
+  15% {
+    transform: translateX(5px);
+    opacity: 0.9;
+  }
+  78% {
+    transform: translateX(32px);
+    opacity: 0.9;
+  } /* x282 */
+  100% {
+    transform: translateX(36px);
+    opacity: 0;
+  } /* x286, gone before x288/output */
+}
+
+@keyframes otam-bar-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: var(--rest, 1);
+  }
+}
+
+@keyframes otam-rank-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.3);
+    opacity: var(--rest, 1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: var(--rest, 1);
+  }
+}
+
+@keyframes otam-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.18;
+  }
+  50% {
+    transform: scale(1.14);
+    opacity: 0.05;
+  }
+}
+.uc-viz--outbound-tam .uc-otam-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* =====================================================================
+   Reduced motion: force the resolved/built state, no animation.
+   Flow dots stay at opacity 0.
+   ===================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--outbound-tam * {
+    animation: none !important;
+  }
+  .uc-viz--outbound-tam .uc-otam-flowA,
+  .uc-viz--outbound-tam .uc-otam-flowB {
+    opacity: 0 !important;
+  }
+  .uc-viz--outbound-tam .uc-otam-bar,
+  .uc-viz--outbound-tam .uc-otam-rank,
+  .uc-viz--outbound-tam .uc-otam-mkt {
+    transform: none !important;
+  }
+}
+
+/* --- signal-based --- */
+
+/* ─── RESTING STATE: fully resolved ───────────────────────────────────────── */
+/* Every animated element shows its final built state with no animation.       */
+/* Values sourced from the existing prefers-reduced-motion block.              */
+
+.uc-viz--signal-based .uc-signal-ping-a,
+.uc-viz--signal-based .uc-signal-ping-b,
+.uc-viz--signal-based .uc-signal-ping-c {
+  opacity: 0.2;
+  r: 14;
+}
+
+.uc-viz--signal-based .uc-signal-amber-ring {
+  opacity: 0;
+  r: 8;
+}
+
+.uc-viz--signal-based .uc-signal-pulse-ring {
+  opacity: 0.18;
+  r: 28;
+}
+
+.uc-viz--signal-based .uc-signal-src-fade {
+  opacity: 1;
+}
+
+.uc-viz--signal-based .uc-signal-packet-1,
+.uc-viz--signal-based .uc-signal-packet-2,
+.uc-viz--signal-based .uc-signal-packet-3 {
+  transform: translateX(114px);
+  opacity: 0;
+}
+
+.uc-viz--signal-based .uc-signal-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+
+.uc-viz--signal-based .uc-signal-lead-slide {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.uc-viz--signal-based .uc-signal-check {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+
+/* ─── BUILD ANIMATIONS: gate behind .is-live .is-active ───────────────────── */
+/* Every animation runs once (fill: both, never infinite).                     */
+/* Keyframes go hidden → resolved and END resolved.                            */
+
+/* 0.0–0.5s: signal sources fade in */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-src-fade {
+  animation: uc-sb-src-fade 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0s both;
+}
+
+/* 0.2–0.7s: input pings fire once during build then rest hidden */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-ping-a {
+  animation: uc-sb-ping 0.5s ease-out 0.2s both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-ping-b {
+  animation: uc-sb-ping 0.5s ease-out 0.35s both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-ping-c {
+  animation: uc-sb-ping 0.5s ease-out 0.5s both;
+}
+
+/* 0.2–1.0s: amber ring fires once then rests hidden */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-amber-ring {
+  animation: uc-sb-amber-ring 0.7s ease-out 0.2s both;
+}
+
+/* 0.3–1.2s: packets travel input→system exactly once then vanish */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-packet-1 {
+  animation: uc-sb-packet 0.65s linear 0.3s both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-packet-2 {
+  animation: uc-sb-packet 0.65s linear 0.6s both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-packet-3 {
+  animation: uc-sb-packet 0.65s linear 0.9s both;
+}
+
+/* 0.5–0.8s: system pulse ring settles (then continues ambient loop below) */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-pulse-ring {
+  animation:
+    uc-sb-pulse-ring-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both,
+    uc-sb-pulse-ring-breathe 4.8s ease-in-out 0.85s infinite;
+}
+
+/* 0.9–1.4s: lead card slides in */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-lead-slide {
+  animation: uc-sb-lead-slide 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both;
+}
+
+/* 1.2–1.7s: amber check draws on */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--signal-based
+  .uc-signal-check {
+  animation: uc-sb-check-draw 0.45s cubic-bezier(0.22, 1, 0.36, 1) 1.2s both;
+}
+
+/* draw lines resolved from start (no animation needed, already resolved) */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--signal-based .uc-signal-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+
+/* ─── KEYFRAMES ────────────────────────────────────────────────────────────── */
+
+/* Signal sources fade in */
+@keyframes uc-sb-src-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Ping fires once: expands out and disappears, ends at rest (opacity:0 r:14) */
+@keyframes uc-sb-ping {
+  0% {
+    r: 8;
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  100% {
+    r: 20;
+    opacity: 0;
+  }
+}
+
+/* Amber ring fires once: expands out and disappears */
+@keyframes uc-sb-amber-ring {
+  0% {
+    r: 8;
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.55;
+  }
+  100% {
+    r: 22;
+    opacity: 0;
+  }
+}
+
+/* Packet travels from start position to system, then vanishes */
+@keyframes uc-sb-packet {
+  0% {
+    transform: translateX(82px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(148px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(148px);
+    opacity: 0;
+  }
+}
+
+/* Pulse ring build-in: materializes at resolved state */
+@keyframes uc-sb-pulse-ring-in {
+  0% {
+    r: 22;
+    opacity: 0;
+  }
+  100% {
+    r: 28;
+    opacity: 0.18;
+  }
+}
+
+/* Pulse ring ambient breathe: the ONE infinite loop allowed */
+@keyframes uc-sb-pulse-ring-breathe {
+  0% {
+    r: 28;
+    opacity: 0.18;
+  }
+  40% {
+    r: 34;
+    opacity: 0.08;
+  }
+  70% {
+    r: 36;
+    opacity: 0;
+  }
+  100% {
+    r: 28;
+    opacity: 0.18;
+  }
+}
+
+/* Lead card slides in from the right, ends at translateX(0) opacity:1 */
+@keyframes uc-sb-lead-slide {
+  0% {
+    transform: translateX(14px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Check mark draws on, ends at stroke-dashoffset:0 opacity:1 */
+@keyframes uc-sb-check-draw {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* ─── REDUCED MOTION ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--signal-based * {
+    animation: none !important;
+  }
+
+  .uc-viz--signal-based .uc-signal-ping-a,
+  .uc-viz--signal-based .uc-signal-ping-b,
+  .uc-viz--signal-based .uc-signal-ping-c {
+    opacity: 0.2;
+    r: 14;
+  }
+
+  .uc-viz--signal-based .uc-signal-amber-ring {
+    opacity: 0;
+    r: 8;
+  }
+
+  .uc-viz--signal-based .uc-signal-pulse-ring {
+    opacity: 0.18;
+    r: 28;
+  }
+
+  .uc-viz--signal-based .uc-signal-packet-1,
+  .uc-viz--signal-based .uc-signal-packet-2,
+  .uc-viz--signal-based .uc-signal-packet-3 {
+    transform: translateX(114px);
+    opacity: 0.7;
+  }
+
+  .uc-viz--signal-based .uc-signal-lead-slide {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .uc-viz--signal-based .uc-signal-check {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* --- crm-recycling --- */
+
+/* ── RESTING STATE (resolved, visible, no animation) ─────────────────────── */
+
+.uc-viz--crm-recycling .uc-crm-pulse {
+  transform-origin: 220px 150px;
+  opacity: 0.18;
+  transform: scale(1);
+}
+
+.uc-viz--crm-recycling .uc-crm-fill-1,
+.uc-viz--crm-recycling .uc-crm-fill-2,
+.uc-viz--crm-recycling .uc-crm-fill-3,
+.uc-viz--crm-recycling .uc-crm-row3-c1,
+.uc-viz--crm-recycling .uc-crm-row3-c2,
+.uc-viz--crm-recycling .uc-crm-row3-c3 {
+  opacity: 0.4;
+}
+
+.uc-viz--crm-recycling .uc-crm-row3-bg {
+  opacity: 0.35;
+}
+
+.uc-viz--crm-recycling .uc-crm-recycle {
+  transform-origin: 409px 103px;
+  transform: rotate(0deg);
+  opacity: 0.7;
+}
+
+.uc-viz--crm-recycling .uc-crm-pkt-a,
+.uc-viz--crm-recycling .uc-crm-pkt-b {
+  opacity: 0;
+}
+
+/* ── BUILD ANIMATIONS (gated: only when panel is active) ─────────────────── */
+
+/* Input materializes: 0.0 – 0.5s */
+/* (The stale CRM table lives in the base SVG; its opacity rests visible.
+   If there is a dedicated input-fade class add it here. Packets carry the
+   sense of arrival for now.) */
+
+/* Packet A: input → system → output, 0.3 – 1.2s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-pkt-a {
+  animation: uc-crm-recycling-pkt-a-build 0.9s 0.3s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Packet B: slight stagger behind A */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-pkt-b {
+  animation: uc-crm-recycling-pkt-b-build 0.9s 0.55s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Recycle glyph: one smooth 360° spin, 0.5 – 1.4s */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--crm-recycling
+  .uc-crm-recycle {
+  animation: uc-crm-recycling-spin-once 0.9s 0.5s linear both;
+}
+
+/* Output cells: staggered fade-in, 0.9 – 1.7s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-fill-1 {
+  animation: uc-crm-recycling-fillin-build 0.5s 0.9s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-fill-2 {
+  animation: uc-crm-recycling-fillin-build 0.5s 1.05s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-fill-3 {
+  animation: uc-crm-recycling-fillin-build 0.5s 1.2s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--crm-recycling
+  .uc-crm-row3-bg {
+  animation: uc-crm-recycling-rowbg-build 0.5s 1.3s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--crm-recycling
+  .uc-crm-row3-c1 {
+  animation: uc-crm-recycling-fillin-build 0.5s 1.35s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--crm-recycling
+  .uc-crm-row3-c2 {
+  animation: uc-crm-recycling-fillin-build 0.5s 1.5s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--crm-recycling
+  .uc-crm-row3-c3 {
+  animation: uc-crm-recycling-fillin-build 0.5s 1.65s
+    cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulse ring: ambient infinite breathe (the ONLY infinite animation) */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--crm-recycling .uc-crm-pulse {
+  animation: uc-crm-recycling-pulse 4.8s 0.5s ease-in-out infinite;
+}
+
+/* ── KEYFRAMES ────────────────────────────────────────────────────────────── */
+
+/* Packet A: travels input → system → output once, ends hidden */
+@keyframes uc-crm-recycling-pkt-a-build {
+  0% {
+    transform: translateX(74px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  44% {
+    transform: translateX(220px);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(366px);
+    opacity: 1;
+  }
+  85% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(366px);
+    opacity: 0;
+  }
+}
+
+/* Packet B: same path, ends hidden */
+@keyframes uc-crm-recycling-pkt-b-build {
+  0% {
+    transform: translateX(74px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  44% {
+    transform: translateX(220px);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(366px);
+    opacity: 1;
+  }
+  85% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(366px);
+    opacity: 0;
+  }
+}
+
+/* Recycle glyph: one 360° rotation, rests at resolved opacity */
+@keyframes uc-crm-recycling-spin-once {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.7;
+  }
+}
+
+/* Fill cells: hidden → resolved opacity */
+@keyframes uc-crm-recycling-fillin-build {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+/* Row3 bg: hidden → resolved opacity */
+@keyframes uc-crm-recycling-rowbg-build {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+/* Pulse ring: slow ambient breathe (infinite) */
+@keyframes uc-crm-recycling-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.18;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.08;
+  }
+}
+
+/* ── REDUCED MOTION ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--crm-recycling * {
+    animation: none !important;
+  }
+
+  .uc-viz--crm-recycling .uc-crm-fill-1,
+  .uc-viz--crm-recycling .uc-crm-fill-2,
+  .uc-viz--crm-recycling .uc-crm-fill-3,
+  .uc-viz--crm-recycling .uc-crm-row3-c1,
+  .uc-viz--crm-recycling .uc-crm-row3-c2,
+  .uc-viz--crm-recycling .uc-crm-row3-c3 {
+    opacity: 0.4 !important;
+  }
+
+  .uc-viz--crm-recycling .uc-crm-row3-bg {
+    opacity: 0.35 !important;
+  }
+
+  .uc-viz--crm-recycling .uc-crm-pulse {
+    opacity: 0.18 !important;
+    transform: none !important;
+  }
+
+  .uc-viz--crm-recycling .uc-crm-pkt-a,
+  .uc-viz--crm-recycling .uc-crm-pkt-b {
+    opacity: 0 !important;
+  }
+
+  .uc-viz--crm-recycling .uc-crm-recycle {
+    transform: none !important;
+    opacity: 0.7 !important;
+  }
+}
+
+/* --- warm-network --- */
+
+/* Resting state = fully built and visible. Selectors below only animate the
+   build when the panel is live + active, then settle into this same state. */
+
+/* ---- Build gate ---- */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-edges {
+  animation: wn-fade-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-you {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wn-pop-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-contact {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wn-pop-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.12s;
+}
+
+/* Resting state: the warm path stays fully drawn when idle (overrides the
+   SVG's dashoffset="100" so an inactive panel shows the finished path, not a
+   blank one). The gated build below still draws it 100->0 on activation. */
+.uc-viz--warm-network .uc-wn-path-left,
+.uc-viz--warm-network .uc-wn-path-right {
+  stroke-dashoffset: 0;
+}
+/* Amber path draws: left (0.4-0.95s) then right (0.95-1.4s), stays drawn */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--warm-network
+  .uc-wn-path-left {
+  animation: wn-draw 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--warm-network
+  .uc-wn-path-right {
+  animation: wn-draw 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.95s both;
+}
+
+/* Bridge ring: fades in as the left path passes through, settles static */
+.uc-showcase.is-live
+  .uc-panel.is-active
+  .uc-viz--warm-network
+  .uc-wn-bridge-ring {
+  animation: wn-ring-settle 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.55s both;
+}
+
+/* System box settles 0.5-0.8s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .wn-system {
+  transform-box: view-box;
+  transform-origin: 220px 150px;
+  animation: wn-settle 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+}
+
+/* Account resolves 0.9-1.6s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-acct {
+  transform-box: view-box;
+  transform-origin: 330px 150px;
+  animation: wn-resolve 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both;
+}
+
+/* Flow dots ride once, linear travel, gated to safe x-ranges only */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-dot-a {
+  animation: wn-dot-a 0.7s linear 0.45s both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-dot-b {
+  animation: wn-dot-b 0.55s linear 1s both;
+}
+
+/* ---- The ONLY infinite loop: system pulse breathe ---- */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--warm-network .uc-wn-pulse {
+  animation: wn-pulse 4.8s ease-in-out 1.6s infinite both;
+}
+
+/* ============ KEYFRAMES ============ */
+@keyframes wn-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes wn-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes wn-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes wn-ring-settle {
+  0% {
+    opacity: 0;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+@keyframes wn-settle {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes wn-resolve {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Leg A: rides left path you(72,150) -> bridge(116,126) -> node edge.
+   Absorbed at left edge: opacity hits 0 by the time x reaches 188 (<=190). */
+@keyframes wn-dot-a {
+  0% {
+    opacity: 0;
+    cx: 72px;
+    cy: 150px;
+  }
+  15% {
+    opacity: 1;
+    cx: 88px;
+    cy: 140px;
+  }
+  50% {
+    opacity: 1;
+    cx: 116px;
+    cy: 126px;
+  }
+  85% {
+    opacity: 1;
+    cx: 170px;
+    cy: 142px;
+  }
+  100% {
+    opacity: 0;
+    cx: 188px;
+    cy: 149px;
+  }
+}
+
+/* Leg B: emitted at node right edge x250 -> travels to x286, fades to 0 by x<=288.
+   Never exceeds 286; stays clear of account (x>=290). */
+@keyframes wn-dot-b {
+  0% {
+    opacity: 0;
+    cx: 250px;
+    cy: 150px;
+  }
+  20% {
+    opacity: 1;
+    cx: 258px;
+    cy: 147px;
+  }
+  70% {
+    opacity: 1;
+    cx: 276px;
+    cy: 142px;
+  }
+  100% {
+    opacity: 0;
+    cx: 286px;
+    cy: 149px;
+  }
+}
+
+@keyframes wn-pulse {
+  0% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.32;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+}
+
+/* ---- Reduced motion: force resolved state, no animation ---- */
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--warm-network * {
+    animation: none !important;
+  }
+  .uc-viz--warm-network .uc-wn-path-left,
+  .uc-viz--warm-network .uc-wn-path-right {
+    stroke-dashoffset: 0 !important;
+  }
+  .uc-viz--warm-network .uc-wn-bridge-ring {
+    opacity: 0.85 !important;
+  }
+  .uc-viz--warm-network .uc-wn-dot-a,
+  .uc-viz--warm-network .uc-wn-dot-b {
+    opacity: 0 !important;
+  }
+}
+
+/* --- data-sprints --- */
+
+/* ── Static geometry (no animation) ── */
+.uc-viz--data-sprints .ds-guide {
+  stroke: #9ab3c4;
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+/* ── Raw data lines: resting = resolved (opacity .55) ── */
+.uc-viz--data-sprints .ds-raw-line {
+  stroke: #6f8fa6;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+/* ── Input gap marker ── */
+.uc-viz--data-sprints .ds-raw-gap {
+  fill: none;
+  stroke: #9ab3c4;
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+/* ── System node bg ── */
+.uc-viz--data-sprints .ds-sys-bg {
+  fill: #ffffff;
+  stroke: #081827;
+  stroke-width: 1.6;
+}
+
+/* ── System pulse: resting = faint glow (.12) ── */
+.uc-viz--data-sprints .ds-sys-pulse {
+  fill: none;
+  stroke: #1f4e73;
+  stroke-width: 1.2;
+  opacity: 0.12;
+}
+
+/* ── Cluster edges + dots ── */
+.uc-viz--data-sprints .ds-cluster .ds-cl-edge {
+  stroke: #6f8fa6;
+  stroke-width: 1;
+}
+.uc-viz--data-sprints .ds-cluster .ds-cl-dot {
+  fill: #6f8fa6;
+}
+
+/* ── Table structure ── */
+.uc-viz--data-sprints .ds-tbl-border {
+  fill: none;
+  stroke: #081827;
+  stroke-width: 1.4;
+  opacity: 0.9;
+}
+.uc-viz--data-sprints .ds-tbl-col,
+.uc-viz--data-sprints .ds-tbl-row {
+  stroke: #9ab3c4;
+  stroke-width: 0.8;
+  opacity: 0.7;
+}
+
+/* ── Table cells: resting = resolved (.12) ── */
+.uc-viz--data-sprints .ds-cell {
+  fill: #1f4e73;
+  opacity: 0.12;
+}
+
+/* ── Badge: resting = visible ── */
+.uc-viz--data-sprints .ds-badge-ring {
+  fill: #d98a4a;
+  stroke: none;
+  opacity: 1;
+}
+.uc-viz--data-sprints .ds-badge-check {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.8;
+  opacity: 1;
+}
+
+/* ── Packets: resting = hidden (they only appear during the build) ── */
+.uc-viz--data-sprints .ds-pkt {
+  fill: #1f4e73;
+  opacity: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BUILD ANIMATIONS — only fire while the panel is live + active.
+   Each runs once (fill-mode: both, no infinite).
+   ════════════════════════════════════════════════════════════════ */
+
+/* Raw data lines — staggered fade-in 0.0 – 0.5s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-1 {
+  animation: ds-build-raw 0.55s 0s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-2 {
+  animation: ds-build-raw 0.55s 0.07s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-3 {
+  animation: ds-build-raw 0.55s 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-4 {
+  animation: ds-build-raw 0.55s 0.21s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-5 {
+  animation: ds-build-raw 0.55s 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-raw-6 {
+  animation: ds-build-raw 0.55s 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* System pulse — settle 0.5 – 0.8s, then ambient breathe */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-sys-pulse {
+  animation:
+    ds-build-pulse 0.45s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both,
+    ds-ambient-pulse 4.8s 0.95s ease-in-out infinite;
+}
+
+/* Packets — travel once 0.3 – 1.2s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-pkt-1 {
+  animation: ds-build-pkt 0.8s 0.3s linear both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-pkt-2 {
+  animation: ds-build-pkt 0.8s 0.6s linear both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-pkt-3 {
+  animation: ds-build-pkt 0.8s 0.9s linear both;
+}
+
+/* Table cells — fill 0.9 – 1.5s staggered */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-cell-c0 {
+  animation: ds-build-cell 0.45s 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-cell-c1 {
+  animation: ds-build-cell 0.45s 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-cell-c2 {
+  animation: ds-build-cell 0.45s 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Badge ring + check — appear together 1.55 – 1.8s */
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-badge-ring {
+  animation: ds-build-badge 0.35s 1.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.uc-showcase.is-live .uc-panel.is-active .uc-viz--data-sprints .ds-badge-check {
+  animation: ds-build-badge 0.35s 1.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ════════════════════════════════════════════════════════════════ */
+
+/* Raw lines: hidden → .55 */
+@keyframes ds-build-raw {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+/* System pulse: hidden → settled (.12) */
+@keyframes ds-build-pulse {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+/* Ambient breathe (infinite, only for system pulse) */
+@keyframes ds-ambient-pulse {
+  0% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.22;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+/* Packets: appear, translate input→output, then vanish */
+@keyframes ds-build-pkt {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(146px);
+  }
+  80% {
+    opacity: 0;
+    transform: translateX(292px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(292px);
+  }
+}
+
+/* Table cells: hidden → .12 */
+@keyframes ds-build-cell {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+/* Badge: hidden → fully visible */
+@keyframes ds-build-badge {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .uc-viz--data-sprints * {
+    animation: none !important;
+  }
+  .uc-viz--data-sprints .ds-raw-line {
+    opacity: 0.55;
+  }
+  .uc-viz--data-sprints .ds-sys-pulse {
+    opacity: 0.12;
+  }
+  .uc-viz--data-sprints .ds-cell {
+    opacity: 0.12;
+  }
+  .uc-viz--data-sprints .ds-badge-ring,
+  .uc-viz--data-sprints .ds-badge-check {
+    opacity: 1;
+  }
+  .uc-viz--data-sprints .ds-pkt {
+    opacity: 0;
+  }
+}
+
+/* ============================================================================
+   Use Cases — interactive showcase (tab selector + cross-fading stage).
+   Replaces the old vertical accordion. Each tab swaps a bespoke input->system
+   ->output diagram + copy on the right. Gently auto-advances (app.js initUseCases)
+   while in view, pausing for good on first interaction.
+   ========================================================================== */
+.uc-showcase {
+  /* single source of truth for the connector spine + node alignment */
+  --uc-pad: 38px; /* selector left gutter; the card background starts here */
+  --uc-rail: 19px; /* spine + node center, from the selector's left edge */
+  --uc-node: 13px; /* node diameter */
+  --uc-node-y: 27px; /* node center within each tab (sits on the title line) */
+  display: grid;
+  grid-template-columns: minmax(248px, 0.9fr) 1.55fr;
+  gap: clamp(1.5rem, 4vw, 3.4rem);
+  align-items: start;
+  margin-top: clamp(2rem, 5vw, 3.3rem);
+}
+/* selector: tabs threaded by a connector spine built from per-tab segments.
+   Each tab draws the wire from its own node down to the next tab's node, so the
+   spine begins exactly at the first node and ends exactly at the last (no
+   overshoot) and stays pixel-aligned to the nodes via the shared --uc-rail. */
+.uc-selector {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--uc-pad);
+}
+/* one wire segment per tab: node (top) -> a full tab height down to the next
+   node. Last tab draws none. .is-filled colours the path already travelled. */
+.uc-tab::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--uc-rail) - var(--uc-pad));
+  top: var(--uc-node-y);
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+  transition: background 0.45s ease;
+  pointer-events: none;
+}
+.uc-tab:last-child::before {
+  display: none;
+}
+.uc-tab.is-filled::before {
+  background: color-mix(in srgb, var(--blue) 70%, transparent);
+}
+.uc-tab {
+  position: relative;
+  display: flex;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 15px 16px 15px 14px;
+  transition: background 0.22s ease;
+}
+.uc-tab + .uc-tab {
+  border-top: 1px solid color-mix(in srgb, var(--blue) 8%, transparent);
+}
+.uc-tab-node {
+  position: absolute;
+  left: calc(var(--uc-rail) - var(--uc-pad));
+  top: var(--uc-node-y);
+  width: var(--uc-node);
+  height: var(--uc-node);
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid color-mix(in srgb, var(--blue) 30%, transparent);
+  transform: translate(-50%, -50%);
+  z-index: 1; /* node sits above the connector wire */
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.uc-tab-title {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+  transition: color 0.2s ease;
+}
+.uc-tab-sum {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 34ch;
+}
+.uc-tab:hover .uc-tab-title {
+  color: var(--blue);
+}
+.uc-tab:hover .uc-tab-node {
+  border-color: color-mix(in srgb, var(--blue) 55%, transparent);
+}
+/* visited nodes (those above the active one) read as a filled trail */
+.uc-tab.is-filled .uc-tab-node {
+  background: color-mix(in srgb, var(--blue) 78%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 78%, transparent);
+}
+.uc-tab.is-active {
+  background: color-mix(in srgb, var(--blue) 5%, transparent);
+}
+.uc-tab.is-active .uc-tab-title {
+  color: var(--blue);
+}
+.uc-tab.is-active .uc-tab-node {
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--blue) 16%, transparent),
+    0 0 14px color-mix(in srgb, var(--blue) 50%, transparent);
+  transform: translate(-50%, -50%) scale(1.18);
+}
+.uc-tab:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+/* stage: panels stacked in one grid cell, cross-fading */
+.uc-stage {
+  position: relative;
+  display: grid;
+}
+.uc-panel {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(0.992);
+  pointer-events: none;
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.6s;
+}
+.uc-panel.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s;
+}
+/* Diagrams only animate on the active panel while the section is in view
+   (.uc-showcase.is-live .uc-panel.is-active ...), so inactive panels need no
+   pause rule - they simply rest in their fully resolved state. */
+.uc-diagram {
+  margin: 0;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--blue) 10%, transparent);
+  border-radius: 18px;
+  padding: clamp(8px, 1.6vw, 16px);
+  box-shadow: 0 22px 48px -32px rgba(8, 24, 39, 0.45);
+}
+.uc-viz {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.uc-stage-body {
+  margin-top: 1.4rem;
+}
+.uc-stage-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  color: var(--ink);
+  margin: 0 0 0.55rem;
+}
+.uc-stage-copy {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 58ch;
+  margin: 0 0 1.1rem;
+}
+.uc-stage-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.3rem;
+}
+.uc-stage-tags li {
+  font-size: 0.71rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 14%, transparent);
+  padding: 0.34rem 0.72rem;
+  border-radius: 999px;
+}
+.uc-stage-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--blue);
+  text-decoration: none;
+}
+.uc-stage-cta .cta-arrow {
+  margin-left: 0;
+}
+.uc-stage-cta:hover .cta-arrow {
+  transform: translateX(4px);
+}
+/* mobile: stack — selector becomes a horizontal chip row above the stage */
+@media (max-width: 820px) {
+  .uc-showcase {
+    grid-template-columns: 1fr;
+    gap: 1.6rem;
+  }
+  .uc-selector {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-left: 0;
+    gap: 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .uc-selector::-webkit-scrollbar {
+    display: none;
+  }
+  .uc-tab::before,
+  .uc-tab-node {
+    display: none;
+  }
+  .uc-tab {
+    flex: 0 0 auto;
+    border: 1px solid color-mix(in srgb, var(--blue) 16%, transparent);
+    border-radius: 999px;
+    padding: 9px 16px;
+  }
+  .uc-tab + .uc-tab {
+    border-top: 1px solid color-mix(in srgb, var(--blue) 16%, transparent);
+  }
+  .uc-tab-sum {
+    display: none;
+  }
+  .uc-tab.is-active {
+    background: var(--blue);
+  }
+  .uc-tab.is-active .uc-tab-title {
+    color: #fff;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uc-panel {
+    transition:
+      opacity 0.001s linear,
+      visibility 0s;
+    transform: none;
+  }
+  .uc-tab::before,
+  .uc-tab-node {
+    transition: none;
+  }
+  .uc-tab-node {
+    transform: translate(-50%, -50%);
+  }
+}

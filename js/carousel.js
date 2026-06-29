@@ -178,7 +178,7 @@
   function onSideWheel(e) {
     if (!active || e.ctrlKey) return; // ctrl+wheel is pinch-zoom; leave it
     const dx =
-      Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      Math.abs(e.deltaX) > Math.abs(e.deltaY) * 2.5 // near-horizontal only; up/down keeps priority otherwise
         ? e.deltaX
         : e.shiftKey
           ? e.deltaY
