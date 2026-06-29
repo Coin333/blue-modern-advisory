@@ -805,16 +805,23 @@ export function initHeroNetwork(canvas) {
   // touch events still fire and drive this.
   const DPR_FULL = Math.min(window.devicePixelRatio || 1, 1.4);
   const DPR_SCROLL = Math.min(window.devicePixelRatio || 1, 0.9);
+  const SCROLL_FRAME_MS = 1000 / 30; // cap the hero to ~30fps while scrolling
   let qualityTimer = 0;
+  let scrolling = false; // true during active scroll; gates render rate in loop()
+  let lastStepAt = 0;
   function setDpr(dpr) {
     if (renderer.getPixelRatio() === dpr) return;
     renderer.setPixelRatio(dpr);
     renderer.setSize(width, height, false);
   }
   function onUserScroll() {
+    scrolling = true;
     setDpr(DPR_SCROLL);
     clearTimeout(qualityTimer);
-    qualityTimer = setTimeout(() => setDpr(DPR_FULL), 180);
+    qualityTimer = setTimeout(() => {
+      scrolling = false;
+      setDpr(DPR_FULL);
+    }, 180);
   }
   ["scroll", "wheel", "touchmove"].forEach((evt) =>
     window.addEventListener(evt, onUserScroll, { passive: true }),
@@ -1187,16 +1194,33 @@ export function initHeroNetwork(canvas) {
   let revealed = false;
   function loop() {
     if (!running) return;
+    // While scrolling, render at ~30fps (the model keeps moving, just at half
+    // the frame rate) so the heavy hero stops fighting the scroll. Full 60fps
+    // returns the moment scrolling settles. Stacks with the resolution drop.
+    if (scrolling) {
+      const now = performance.now();
+      if (now - lastStepAt < SCROLL_FRAME_MS) {
+        rafId = requestAnimationFrame(loop);
+        return;
+      }
+      lastStepAt = now;
+    }
     step();
     if (!revealed) {
       // hold the first (heavy/blank) frame at opacity 0, then reveal the
       // already-rendered scene next frame so the fade starts from real content
       revealed = true;
-      requestAnimationFrame(() => canvas.classList.add("is-on"));
+      requestAnimationFrame(() => {
+        canvas.classList.add("is-on");
+        host.classList.add("is-revealed"); // cascade the copy in on one clock
+      });
     }
     rafId = requestAnimationFrame(loop);
   }
+  host.classList.add("hero-armed"); // about to render: drive the copy reveal
   loop();
+  // safety net: never leave the copy hidden if the first frame is delayed
+  setTimeout(() => host.classList.add("is-revealed"), 2500);
 
   return function destroy() {
     running = false;
