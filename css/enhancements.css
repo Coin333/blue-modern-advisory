@@ -1,0 +1,361 @@
+/* ============================================================================
+   Blue Modern Advisory - motion & polish layer ("clay.com" pass)
+   Loaded AFTER styles.css so it overrides by cascade order.
+   Everything here is progressive enhancement: if JS or a modern CSS feature is
+   missing, the base site still works. Reduced-motion is honored throughout
+   (the global rule in styles.css already shortens transitions; JS-driven
+   effects are gated in enhance.js).
+   ========================================================================== */
+
+/* ---- Lenis smooth scroll (minimal required styles, no external CSS) ------- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* ---- Cross-page transition: light opacity crossfade between pages --------
+   Works in every browser (no reliance on cross-document View Transitions).
+   Opacity-only (never transform) so the fixed nav keeps its viewport anchoring
+   during the animation. Enter auto-plays on every load with no JS dependency;
+   exit is triggered by enhance.js adding .bma-leaving to <html>. Both pages
+   share the same light body background, so the crossfade has no flash. */
+@keyframes bma-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes bma-page-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+#root {
+  animation: bma-page-in 0.4s ease both;
+}
+html.bma-leaving #root {
+  animation: bma-page-out 0.22s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  #root,
+  html.bma-leaving #root {
+    animation: none;
+  }
+}
+
+/* ---- Reading progress bar (driven by Lenis in JS via --bma-progress) ----- */
+.bma-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 1100;
+  transform: scaleX(var(--bma-progress, 0));
+  transform-origin: 0 50%;
+  background: linear-gradient(
+    90deg,
+    var(--blue, #1f4e73),
+    var(--orange, #d98a4a)
+  );
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ---- Grain + gradient mesh: tactile depth on light sections -------------- */
+.bma-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      48vw 48vw at 12% 8%,
+      rgba(31, 78, 115, 0.06),
+      transparent 60%
+    ),
+    radial-gradient(
+      42vw 42vw at 92% 22%,
+      rgba(217, 138, 74, 0.05),
+      transparent 60%
+    ),
+    radial-gradient(
+      55vw 55vw at 70% 96%,
+      rgba(31, 78, 115, 0.05),
+      transparent 62%
+    );
+}
+.bma-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- Subtle section bands: "moving through rooms" feel ------------------- */
+.bridge-section {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f8fb 100%);
+}
+.uc-section {
+  background: linear-gradient(180deg, #fffaf3 0%, #f8fbfc 100%);
+}
+.delivery-section {
+  background: linear-gradient(180deg, #f6fafc 0%, #ffffff 100%);
+}
+
+/* ---- Skip link (a11y) --------------------------------------------------- */
+.bma-skip {
+  position: fixed;
+  top: -120px;
+  left: 16px;
+  z-index: 1300;
+  padding: 0.7rem 1.1rem;
+  border-radius: 10px;
+  background: var(--ink, #081827);
+  color: #fff;
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 28px rgba(7, 21, 47, 0.35);
+  transition: top 0.2s ease;
+}
+.bma-skip:focus {
+  top: 16px;
+  outline: 2px solid var(--orange, #d98a4a);
+  outline-offset: 2px;
+}
+
+/* ---- Hero entrance choreography (pure CSS, no JS dependency) ------------- */
+@keyframes bma-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-og-eyebrow {
+  animation: bma-hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-og-headline {
+  animation: bma-hero-rise 0.8s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-og-aside .hero-og-sub2 {
+  animation: bma-hero-rise 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-og-aside .hero-og-ctas {
+  animation: bma-hero-rise 0.8s 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---- FAQ accordion: swap fixed max-height for the smooth grid trick ------ */
+/* (matches .uc-detail; removes the 260px clip risk on long answers) */
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  max-height: none;
+  transition: grid-template-rows 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.faq-item.open .faq-answer {
+  grid-template-rows: 1fr;
+  max-height: none;
+}
+.faq-answer-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ---- Nav: keep dormant scrolled state, add hairline + tighten ----------- */
+.nav-wrapper {
+  transition: padding 0.35s ease;
+}
+.nav-wrapper.is-scrolled {
+  padding-top: 0.55rem;
+}
+/* include transform so the scale condenses smoothly alongside bg/shadow
+   (base .nav-pill transition in styles.css omits transform) */
+.nav-pill {
+  /* solid white at all scroll positions (was translucent over the dark hero
+     at the top); the scrolled state still condenses via scale + shadow */
+  background: #ffffff !important;
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease,
+    border-color 0.35s ease,
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-pill.nav-pill--scrolled {
+  transform: scale(0.97);
+}
+
+/* ---- Sign In button: gentle lighten on hover --------------------------- */
+.nav-cta--primary {
+  transition:
+    background 0.22s ease,
+    color 0.15s,
+    box-shadow 0.22s ease,
+    border-color 0.15s,
+    filter 0.22s ease;
+}
+.nav-cta--primary:hover {
+  filter: brightness(1.07);
+}
+
+/* ---- Hamburger -> X when the mobile menu is open ------------------------- */
+.nav-hamburger span {
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
+  transform-origin: center;
+}
+.nav-hamburger[aria-expanded="true"] span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-hamburger[aria-expanded="true"] span:nth-child(2) {
+  opacity: 0;
+}
+.nav-hamburger[aria-expanded="true"] span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ---- Mobile menu: add a gentle rise to the fade ------------------------- */
+.bma-mnav {
+  transition:
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(-10px);
+}
+.bma-mnav.is-open {
+  transform: translateY(0);
+}
+.bma-mnav a {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bma-mnav.is-open a {
+  opacity: 1;
+  transform: none;
+}
+.bma-mnav.is-open a:nth-child(1) {
+  transition-delay: 0.06s;
+}
+.bma-mnav.is-open a:nth-child(2) {
+  transition-delay: 0.12s;
+}
+.bma-mnav.is-open a:nth-child(3) {
+  transition-delay: 0.18s;
+}
+.bma-mnav.is-open a:nth-child(4) {
+  transition-delay: 0.24s;
+}
+
+/* ---- Magnetic CTAs: uses the `translate` property so it composes with ----
+   existing transform-based :hover lifts instead of fighting them ---------- */
+.bma-magnetic {
+  transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---- Scroll-driven parallax on portraits (modern browsers only) --------- */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .about-team-photo {
+      animation: bma-portrait-parallax linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+    /* scale headroom (1.14 on a 150px circle ~10px/edge) must exceed the
+       translate range (6px) so the round frame never reveals its backing */
+    @keyframes bma-portrait-parallax {
+      from {
+        transform: translateY(-6px) scale(1.14);
+      }
+      to {
+        transform: translateY(6px) scale(1.14);
+      }
+    }
+  }
+}
+
+/* ---- Count-up stat ------------------------------------------------------- */
+.bma-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Form micro-feedback: activate the dormant valid state -------------- */
+.auth-field {
+  position: relative;
+}
+.auth-field.is-valid::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  bottom: 11px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #16a34a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+  animation: bma-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes bma-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---- Reduced-motion: neutralize the JS-independent additions ------------- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-og-eyebrow,
+  .hero-og-headline,
+  .hero-og-aside .hero-og-sub2,
+  .hero-og-aside .hero-og-ctas,
+  .bma-mnav,
+  .bma-mnav a {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .about-team-photo {
+    animation: none !important;
+    transform: none !important;
+  }
+  /* base styles.css cloaks .reveal at opacity:0 but only a (never-added)
+     .revealed unhides it; keep such elements visible when motion is off */
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

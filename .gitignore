@@ -1,0 +1,10 @@
+# OS
+.DS_Store
+
+# Unreferenced source originals (processed versions are committed)
+assets/*-source.jpg
+
+# Editor / tooling
+.claude/
+node_modules/
+*.log
