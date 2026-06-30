@@ -111,22 +111,15 @@
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var current = 0;
 
-    // ---- Auto-advance: one rAF clock fills a progress bar on the active pill;
-    // when it tops out, selection advances to the next use case. The clock
-    // freezes (the bar simply holds) while the section is hovered, keyboard-
-    // focused, or off-screen, and never runs under reduced motion. ----
+    // ---- Auto-advance: a plain timer rotates through the use cases. It pauses
+    // while the section is hovered, keyboard-focused, or off-screen, and never
+    // runs under reduced motion. (No visible progress bar.) ----
     var AUTO_MS = 5200;
-    var elapsed = 0; // ms banked toward the next advance
-    var lastTs = 0; // previous rAF timestamp (0 = clock parked)
-    var raf = 0;
+    var timer = 0; // pending setTimeout id for the next advance (0 = parked)
     var inView = false;
     var hovered = false;
     var focused = false;
 
-    function setProgress(p) {
-      // only the active pill renders a bar, so only its var needs updating
-      tabs[current].style.setProperty("--uc-progress", p);
-    }
     function isKeyboardFocus(el) {
       // pause for keyboard focus, not for a mouse click that focuses the button
       try {
@@ -134,6 +127,22 @@
       } catch (_) {
         return false;
       }
+    }
+    function clearTimer() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = 0;
+      }
+    }
+    // (re)start the dwell before the next auto-advance, unless something holds
+    // the cycle paused (hover, keyboard focus, off-screen, or reduced motion).
+    function arm() {
+      clearTimer();
+      if (reduce || !inView || hovered || focused) return;
+      timer = setTimeout(function () {
+        timer = 0;
+        select(current + 1, false); // select() re-arms the following advance
+      }, AUTO_MS);
     }
 
     function select(i, focus) {
@@ -149,8 +158,6 @@
         tab.tabIndex = active ? 0 : -1;
         panels[k].classList.toggle("is-active", active);
       });
-      elapsed = 0; // restart the dwell clock for the newly active pill
-      setProgress(0);
       // keep the active pill in view in the rail (so it's never half-off-screen
       // on a phone). Only scroll when the pill is actually clipped - on desktop
       // every pill fits, and a no-op smooth-scroll still repaints the masked
@@ -167,60 +174,22 @@
         }
       }
       if (focus) tabs[i].focus({ preventScroll: true });
-    }
-
-    var running = false; // true only while the bar is actively filling
-    function setRunning(on) {
-      if (on === running) return;
-      running = on;
-      // CSS fades the bar in while this class is present, out when it's gone
-      showcase.classList.toggle("uc-running", on);
-    }
-
-    function tick(ts) {
-      raf = 0;
-      var go = inView && !hovered && !focused;
-      setRunning(go);
-      if (go) {
-        if (lastTs) {
-          elapsed += ts - lastTs;
-          if (elapsed >= AUTO_MS) {
-            select(current + 1, false); // resets elapsed + bar to 0
-          } else {
-            setProgress(elapsed / AUTO_MS);
-          }
-        }
-        lastTs = ts;
-      } else {
-        lastTs = 0; // parked: drop the stale delta so resuming never jumps
-      }
-      if (inView && !reduce) raf = requestAnimationFrame(tick);
-    }
-    function startLoop() {
-      if (reduce || raf) return;
-      lastTs = 0;
-      raf = requestAnimationFrame(tick);
-    }
-    function stopLoop() {
-      setRunning(false);
-      if (raf) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-      }
+      arm(); // each advance (auto or manual) gets a full dwell before the next
     }
 
     // Pause while the pointer is actively over the pill rail (so a pill never
     // slides out from under you as you reach for it) and while a pill holds
     // keyboard focus. The hover flag self-clears on a timeout: a wheel-scroll
-    // fires no pointerleave, so without it the bar could freeze for good.
+    // fires no pointerleave, so without it the cycle could stall for good.
     var hoverTO = 0;
     var hoverRail = selector || showcase;
     function holdForHover() {
       hovered = true;
+      clearTimer();
       if (hoverTO) clearTimeout(hoverTO);
       hoverTO = setTimeout(function () {
         hovered = false;
-        lastTs = 0;
+        arm();
       }, 900);
     }
     function clearHover() {
@@ -229,16 +198,19 @@
         hoverTO = 0;
       }
       hovered = false;
-      lastTs = 0;
+      arm();
     }
     hoverRail.addEventListener("pointermove", holdForHover);
     hoverRail.addEventListener("pointerleave", clearHover);
     showcase.addEventListener("focusin", function (e) {
-      if (isKeyboardFocus(e.target)) focused = true;
+      if (isKeyboardFocus(e.target)) {
+        focused = true;
+        clearTimer();
+      }
     });
     showcase.addEventListener("focusout", function () {
       focused = false;
-      lastTs = 0;
+      arm();
     });
 
     tabs.forEach(function (tab, i) {
@@ -276,13 +248,13 @@
             inView = e.isIntersecting;
             if (inView) {
               goLive();
-              startLoop();
+              arm();
             } else {
-              // leaving the viewport clears any held hover/focus so the bar
-              // always resumes (and re-fades-in) cleanly when it scrolls back
+              // leaving the viewport clears any held hover/focus so the cycle
+              // always resumes cleanly when it scrolls back into view
               hovered = false;
               focused = false;
-              stopLoop();
+              clearTimer();
             }
           });
         },
@@ -292,7 +264,7 @@
     } else {
       inView = true;
       goLive();
-      startLoop();
+      arm();
     }
   }
 

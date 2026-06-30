@@ -26009,43 +26009,7 @@ a.trusted-marquee-item {
   }
 }
 
-/* ---- auto-advance progress bar: a thin rail seated in the active pill's
-   bottom padding. ::before is the dim track, ::after the white fill scaled by
-   --uc-progress (0..1, driven each frame from app.js). The whole bar fades in
-   only while the cycle is actually advancing (.uc-running, set by app.js) and
-   fades back out the moment it pauses (hover, focus, off-screen). ------------ */
-.uc-tab::before,
-.uc-tab::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 5px;
-  height: 2.5px;
-  border-radius: 2px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-.uc-tab::before {
-  background: rgba(255, 255, 255, 0.26);
-}
-.uc-tab::after {
-  background: #fff;
-  transform-origin: left center;
-  transform: scaleX(var(--uc-progress, 0));
-}
-.uc-showcase.uc-running .uc-tab.is-active::before,
-.uc-showcase.uc-running .uc-tab.is-active::after {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* no auto-advance under reduced motion, so the bar has nothing to show */
-  .uc-tab::before,
-  .uc-tab::after {
-    display: none;
-  }
-}
+/* The pills auto-advance on a timer (app.js) with no visible progress bar. */
 
 /* ---- stage: panels cross-fade in one grid cell --------------------------- */
 .uc-stage {

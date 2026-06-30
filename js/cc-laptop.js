@@ -325,10 +325,13 @@ async function boot() {
     antialias: true,
     powerPreference: "high-performance",
   });
+  // Cap the backing-store resolution: on a 2x/3x retina panel a full-DPR render
+  // of a model + ACES tonemapping is fill-rate heavy for little visible gain.
+  // 1.35 keeps the lid edges crisp while cutting ~20% of the pixels vs 1.5.
   renderer.setPixelRatio(
     Math.min(
       window.devicePixelRatio || 1,
-      window.innerWidth < 700 ? 1.25 : 1.5,
+      window.innerWidth < 700 ? 1.1 : 1.35,
     ),
   );
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -484,11 +487,15 @@ async function boot() {
     tgY = 0,
     curX = 0,
     curY = 0;
+  // render-on-demand flag: forces a draw on pointer move, resize, or re-entry.
+  // Declared here (before resize() runs below) since those handlers set it.
+  let needsRender = true;
   window.addEventListener(
     "pointermove",
     (e) => {
       tgX = (e.clientX / window.innerWidth) * 2 - 1;
       tgY = (e.clientY / window.innerHeight) * 2 - 1;
+      needsRender = true; // wake the render loop to ease toward the new tilt
     },
     { passive: true },
   );
@@ -501,13 +508,18 @@ async function boot() {
     css.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    needsRender = true; // re-frame after a viewport change
   }
   window.addEventListener("resize", resize);
   resize();
 
   let visible = true;
   new IntersectionObserver(
-    (entries) => entries.forEach((e) => (visible = e.isIntersecting)),
+    (entries) =>
+      entries.forEach((e) => {
+        visible = e.isIntersecting;
+        if (visible) needsRender = true; // redraw once on re-entry
+      }),
     { threshold: 0 },
   ).observe(host);
 
@@ -520,10 +532,27 @@ async function boot() {
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05);
     t += dt;
-    if (!visible) return;
+    if (!visible) return; // off-screen: rAF keeps ticking but nothing renders
     acc += dt;
     if (acc < STEP) return; // skip frames to cut CSS3D + WebGL cost
     acc = 0;
+
+    // ease the tilt toward the cursor every step (cheap math); the pose is
+    // "still moving" until it has all but caught up to the target.
+    curX += (tgX - curX) * 0.06;
+    curY += (tgY - curY) * 0.06;
+    const settling = Math.abs(tgX - curX) > 1e-3 || Math.abs(tgY - curY) > 1e-3;
+    // boot + the one-time push-in run until ~t=4.7s (zp tops out then)
+    const intro = t < 4.9;
+    if (CFG.spin) needsRender = true; // dev inspection sweep never settles
+
+    // Render-on-demand: once the intro is done and the laptop has settled to the
+    // cursor (and isn't being spun), the pose is static, so skip the WebGL +
+    // CSS3D draw entirely. The on-screen OS UI keeps animating on its own via CSS
+    // (it lives in the DOM, not the GL render), so the screen stays alive while
+    // the heavy 3D draw idles at ~0 cost until you move the pointer again.
+    if (!intro && !settling && !needsRender) return;
+    needsRender = false;
 
     // live framing: fit the bounding SPHERE so the whole laptop stays visible
     // at any rotation (tilt/spin) and accounts for depth + corners. CFG.fill is
@@ -541,13 +570,11 @@ async function boot() {
     camera.lookAt(0, CFG.targetY * ez, 0); // pan up onto the screen
     camera.updateProjectionMatrix();
 
-    // tilt toward cursor + idle float, mirrored onto the CSS3D group
-    curX += (tgX - curX) * 0.06;
-    curY += (tgY - curY) * 0.06;
-    const idle = Math.sin(t * 0.55) * 0.02;
+    // tilt toward cursor, mirrored onto the CSS3D group. (The idle float was
+    // removed so the pose can fully settle and the loop can stop drawing.)
     const yaw = CFG.spin
       ? Math.sin(t * 0.4) * CFG.spin // sweep side to side to check alignment
-      : CFG.baseYaw + curX * CFG.tiltYaw + idle;
+      : CFG.baseYaw + curX * CFG.tiltYaw;
     const pitch = CFG.basePitch + curY * CFG.tiltPitch * 0.5;
     group.rotation.set(pitch, yaw, CFG.baseRoll);
     cssGroup.rotation.copy(group.rotation);

@@ -106,6 +106,7 @@
   let angle = 0; // current (eased) ring rotation, degrees
   let lastScroll = NaN;
   let idleFrames = 0;
+  let settledFrames = 0; // consecutive frames fully at rest -> park the loop
   let lastNow = performance.now();
   // throttle the geometry re-read (see frame()); cache the last rendered ring key
   let measureTick = 0;
@@ -179,6 +180,16 @@
     // inertia: ease the rotation toward the target, frame-rate independent
     angle += (target - angle) * (1 - Math.exp(-OMEGA * dt));
     renderIfChanged(angle);
+
+    // Park the loop once the ring is fully at rest: not scrolling, snapped to a
+    // card, and the eased angle has reached it. While parked we do zero per-frame
+    // work (no measure()/layout reads) until a scroll, wheel, or resize wakes it.
+    // angle is left untouched, so waking resumes exactly where it stopped.
+    if (!moving && idleFrames > IDLE_SNAP && Math.abs(target - angle) < 0.02) {
+      if (++settledFrames > 8) park();
+    } else {
+      settledFrames = 0;
+    }
   }
 
   let rafId = 0;
@@ -190,6 +201,7 @@
   function start() {
     if (active) return;
     active = true;
+    settledFrames = 0; // a fresh wake gets a full run before it can re-park
     loop();
   }
   function stop() {
@@ -199,6 +211,13 @@
     const end = section.getBoundingClientRect().top < 0 ? -TURN : 0;
     angle = end;
     renderIfChanged(end);
+  }
+  // Park is "stop the loop without changing the angle": used when the ring is at
+  // rest but still on screen, so it sits exactly as drawn until a wake restarts.
+  function park() {
+    if (!active) return;
+    active = false;
+    cancelAnimationFrame(rafId);
   }
 
   if ("IntersectionObserver" in window) {
@@ -213,6 +232,7 @@
   }
   window.addEventListener("resize", () => {
     anchor = null;
+    start(); // wake a parked loop so it re-measures + re-pins for the new size
   });
   // Re-read geometry once when the page actually shifts under us, rather than polling
   // it every frame: the Core Competencies laptop powers on and collapses the page a
@@ -234,7 +254,10 @@
   // up in a later module script, so poll briefly until it exists, then subscribe.
   (function bindLenisScroll(tries) {
     if (window.lenis && typeof window.lenis.on === "function") {
-      window.lenis.on("scroll", applyPin);
+      window.lenis.on("scroll", () => {
+        applyPin(); // keep the pin glued every Lenis tick (no one-frame lag)
+        start(); // and wake the eased-rotation loop if it had parked
+      });
     } else if (tries < 120) {
       requestAnimationFrame(() => bindLenisScroll(tries + 1));
     }
