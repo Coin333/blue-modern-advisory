@@ -401,8 +401,8 @@ export function initHeroNetwork(canvas) {
   // (negative X pushes content right; positive Y pushes the focused dot up)
   const HERO = (window.__bmaHero = window.__bmaHero || {});
   if (HERO.viewShift == null) HERO.viewShift = -0.12; // base right-bias (was -0.07; pushed further right, off the text)
-  if (HERO.focusShiftX == null) HERO.focusShiftX = -0.12; // right-bias while focusing a dot
-  if (HERO.focusShiftY == null) HERO.focusShiftY = -0.05; // vertical push of the focused dot (was 0.19 = up to top:31%; negative drops it toward centre, below the card)
+  if (HERO.focusShiftX == null) HERO.focusShiftX = -0.26; // center the focused dot under the tour card's middle (~76% width; screenX≈0.5-focusShiftX). was -0.12 (≈62%, left of the card)
+  if (HERO.focusShiftY == null) HERO.focusShiftY = -0.03; // drop the focused dot just below the card's bottom edge (~53% height; screenY≈0.5-focusShiftY)
   let viewShift = HERO.viewShift; // horizontal view nudge, eased per state
   let viewShiftY = 0; // vertical view nudge, only while focusing a dot
   function applyViewOffset() {

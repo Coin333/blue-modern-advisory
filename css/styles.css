@@ -19870,13 +19870,13 @@ h6,
     rgba(14, 28, 48, 0.93),
     rgba(8, 16, 28, 0.94)
   );
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  backdrop-filter: blur(8px) saturate(1.1);
   color: #e9eff6;
   border: 1px solid rgba(122, 162, 205, 0.26);
   border-radius: 16px;
   box-shadow:
-    0 28px 70px -22px rgba(0, 0, 0, 0.78),
+    0 20px 48px -20px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   opacity: 0;
   pointer-events: none;
@@ -20105,13 +20105,13 @@ h6,
     rgba(14, 28, 48, 0.94),
     rgba(8, 16, 28, 0.95)
   );
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  backdrop-filter: blur(8px) saturate(1.1);
   color: #e9eff6;
   border: 1px solid rgba(122, 162, 205, 0.26);
   border-radius: 16px;
   box-shadow:
-    0 28px 70px -22px rgba(0, 0, 0, 0.78),
+    0 20px 48px -20px rgba(0, 0, 0, 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   opacity: 0;
   pointer-events: none;
@@ -20246,10 +20246,10 @@ h6,
     17px 17px,
     100% 100%,
     100% 100%;
-  -webkit-backdrop-filter: blur(13px) saturate(1.12);
-  backdrop-filter: blur(13px) saturate(1.12);
+  -webkit-backdrop-filter: blur(8px) saturate(1.08);
+  backdrop-filter: blur(8px) saturate(1.08);
   box-shadow:
-    0 22px 56px -26px rgba(2, 8, 16, 0.82),
+    0 16px 40px -24px rgba(2, 8, 16, 0.74),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 /* accent rail → a connector wire fading into the card, not a neon bar */
