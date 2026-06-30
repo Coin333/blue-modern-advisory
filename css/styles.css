@@ -20706,6 +20706,38 @@ h6,
   border-color: rgba(176, 192, 208, 0.16);
   box-shadow: 0 16px 40px -28px rgba(0, 0, 0, 0.6);
 }
+/* stage number above each card — makes the source->activate sequence explicit
+   (the wire dots already light in order); brightens as the signal lands */
+.pipe-card-step {
+  display: block;
+  margin: 0 0 9px;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: #5f87a6;
+  transition: color 0.5s ease;
+}
+.pipe.is-armed .pipe-card.is-on .pipe-card-step {
+  color: #8fc0d8;
+}
+/* grounding caption under the cards: the stack the system is built on */
+.pipe-foot {
+  margin: 30px auto 0;
+  max-width: 520px;
+  text-align: center;
+  font-size: 0.92rem;
+  letter-spacing: 0.012em;
+  color: #8aa0b4;
+}
+.pipe-foot::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  margin: 0 auto 16px;
+  background: rgba(176, 192, 208, 0.26);
+}
 
 /* tour popup: left edge aligned to the bottom-right hero text, vertically
    centred between the page top and that text (the focused dot sits to its left) */
