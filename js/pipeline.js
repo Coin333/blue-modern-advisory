@@ -2,10 +2,11 @@
    The section pins (held in place with a transform, since body has overflow-x
    hidden which would break position:sticky) while you scroll through a tall
    track, and the wire fills dot-to-dot in proportion to scroll position. It
-   fills as you scroll down and as the idle auto-build advances, and never
-   retreats while the section is on screen, so the auto-advance carries into the
-   scroll (no jump-back); it re-arms once the section leaves view. Driven by
-   window scroll, which tracks Lenis's smoothed position. Respects reduced-motion. */
+   fills as you scroll down and retracts as you scroll back up (a true two-way
+   scrub); when you stop, an idle auto-build drifts the fill forward on its own,
+   but yields to any scroll so reverse scrolling always undoes it. It re-arms
+   once the section leaves view. Driven by window scroll, which tracks Lenis's
+   smoothed position. Respects reduced-motion. */
 (function () {
   const section = document.querySelector("#what-bma-builds");
   const pipe = section && section.querySelector("[data-pipe]");
@@ -158,24 +159,23 @@
     wrap.style.transform = t ? "translateY(" + t.toFixed(1) + "px)" : "";
     const scrollP = clamp(t / pinDist, 0, 1);
 
-    // While the user scrolls, the scroll position drives the fill directly. Once
-    // it settles, the build gently auto-advances forward; auto never drags the
-    // fill below the scroll position, so scrolling always takes over cleanly.
+    // The scroll position scrubs the fill BOTH ways: scrolling down draws the
+    // wire and reveals each card; scrolling back up retracts the wire and hides
+    // the cards again (render() toggles is-on off as curP drops). When the user
+    // stops, the build gently auto-advances forward on its own, but that idle
+    // drift never pulls the fill below the current scroll position, so a reverse
+    // scroll always wins and undoes the build cleanly. It re-arms once the
+    // section fully leaves view (stop()).
     const moving = Math.abs(s - lastScrollV) > 0.5;
     lastScrollV = s;
     if (moving) {
       idleMs = 0;
+      autoP = scrollP; // active scroll drives the fill directly, up or down
     } else {
       idleMs += dt * 1000;
       if (idleMs > IDLE_DELAY) autoP = Math.min(1, autoP + dt / AUTO_SECS);
+      if (autoP < scrollP) autoP = scrollP; // idle never drops below the scroll pos
     }
-    // The fill tracks the furthest point reached - whichever of the scroll
-    // position or the idle auto-build is further along - and never retreats
-    // while the section is on screen. So when the pipeline has auto-advanced and
-    // you start scrolling again, it CARRIES ON from where it built to, instead of
-    // snapping back to the raw scroll position (that backward ease was the
-    // jump-back). It re-arms from 0 once the section fully leaves view (stop()).
-    autoP = Math.max(autoP, scrollP);
     const target = autoP;
     curP += (target - curP) * (1 - Math.exp(-EASE_OMEGA * dt)); // smooth follow
     render(curP);
