@@ -104,6 +104,8 @@
     var tabs = [].slice.call(showcase.querySelectorAll(".uc-tab"));
     var panels = [].slice.call(showcase.querySelectorAll(".uc-panel"));
     if (tabs.length < 2 || panels.length !== tabs.length) return;
+    // the horizontally-scrollable pill rail; the active pill is centered in it
+    var selector = showcase.querySelector(".uc-selector");
     var reduce =
       window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -122,7 +124,18 @@
         tab.tabIndex = active ? 0 : -1;
         panels[k].classList.toggle("is-active", active);
       });
-      if (focus) tabs[i].focus();
+      // keep the active pill centered in the rail (so it's never half-off-screen
+      // on a phone, and the row tracks the selection on desktop too)
+      if (selector) {
+        var sr = selector.getBoundingClientRect();
+        var tr = tabs[i].getBoundingClientRect();
+        var delta = tr.left + tr.width / 2 - (sr.left + sr.width / 2);
+        selector.scrollTo({
+          left: selector.scrollLeft + delta,
+          behavior: reduce ? "auto" : "smooth",
+        });
+      }
+      if (focus) tabs[i].focus({ preventScroll: true });
     }
 
     // gentle auto-advance, gated to when the section is on screen

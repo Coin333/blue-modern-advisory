@@ -19,22 +19,15 @@
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // reduced motion: no pin, no scrub - just show the finished wired-up state
-  if (reduce) {
-    segs.forEach((s) => {
-      s.style.strokeDashoffset = "0";
-      s.classList.add("is-on");
-    });
-    nodes.forEach((n) => n.classList.add("is-lit"));
-    cards.forEach((c) => c.classList.add("is-on"));
-    return;
-  }
-
-  // scrub mode: turn the section into a pinned track and drive the draw by scroll
-  section.classList.add("is-scrub");
-  pipe.classList.add("is-armed", "pipe--scrub");
-  nodes[0].classList.add("is-lit"); // first node is the entry point, always lit
-  if (cards[0]) cards[0].classList.add("is-on");
+  // Touch / coarse-pointer / small screens never pin: the transform "fake pin"
+  // fights native momentum scroll there and feels like it locks you in place
+  // (Lenis runs with syncTouch off, so its scroll value lags touch). They get
+  // the no-pin path below instead.
+  const coarsePointer =
+    !!window.matchMedia &&
+    (window.matchMedia("(hover: none)").matches ||
+      window.matchMedia("(pointer: coarse)").matches);
+  const noPin = coarsePointer || window.innerWidth < 768;
 
   const N = segs.length; // 3 segments between 4 nodes
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -52,6 +45,61 @@
       if (cards[i]) cards[i].classList.toggle("is-on", arrived);
     }
   }
+
+  // reduced motion: no pin, no scrub - just show the finished wired-up state
+  if (reduce) {
+    nodes[0].classList.add("is-lit"); // entry node + first card, like the live paths
+    if (cards[0]) cards[0].classList.add("is-on");
+    render(1);
+    return;
+  }
+
+  // Touch / mobile: don't pin. The page scrolls normally; the wire draws itself
+  // ONCE (a time-based tween, not scroll-scrubbed) the first time the section
+  // comes into view, then stays drawn. No transform on .section-wrap, so nothing
+  // ever "holds" the viewport in place.
+  if (noPin) {
+    pipe.classList.add("is-armed");
+    nodes[0].classList.add("is-lit");
+    if (cards[0]) cards[0].classList.add("is-on");
+    render(0);
+    let played = false;
+    function playOnce() {
+      if (played) return;
+      played = true;
+      const DUR = 1500;
+      let t0 = 0;
+      function tick(ts) {
+        if (!t0) t0 = ts;
+        const k = clamp((ts - t0) / DUR, 0, 1);
+        render(k);
+        if (k < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              playOnce();
+              io.disconnect();
+            }
+          }),
+        { threshold: 0.35 },
+      );
+      io.observe(section);
+    } else {
+      render(1);
+    }
+    return;
+  }
+
+  // scrub mode: turn the section into a pinned track and drive the draw by scroll
+  section.classList.add("is-scrub");
+  pipe.classList.add("is-armed", "pipe--scrub");
+  nodes[0].classList.add("is-lit"); // first node is the entry point, always lit
+  if (cards[0]) cards[0].classList.add("is-on");
 
   // Pin math is NON-feedback: the translate depends only on the scroll position
   // and cached geometry, never on the wrap's own (already transformed) rect, so

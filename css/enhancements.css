@@ -126,6 +126,17 @@ html.bma-leaving #root {
   background: linear-gradient(180deg, #f6fafc 0%, #ffffff 100%);
 }
 
+/* ---- Hero -> body luminance bridge ---------------------------------------
+   The dark-hero -> white-body transition is owned entirely by .hero-og::before
+   (styles.css): a 230px gradient at the hero's bottom that ramps to white. An
+   earlier attempt added a SECOND navy->white band on .trusted-by--full here,
+   which stacked on top of that and produced the "white stripe" (white from the
+   hero, then navy again from the band). Removed - the single ::before ramp,
+   smoothed in styles.css, handles the whole transition. */
+.trusted-by--full {
+  border-top: none; /* no hairline at the seam */
+}
+
 /* ---- Skip link (a11y) --------------------------------------------------- */
 .bma-skip {
   position: fixed;
@@ -160,17 +171,29 @@ html.bma-leaving #root {
     transform: none;
   }
 }
-.hero-og-eyebrow {
-  animation: bma-hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* The hero copy entrance is driven solely by the JS-gated .hero-armed ->
+   .is-revealed cascade in styles.css (revealed on the first frame at init, no
+   longer waiting on the 3D/model load). The old unconditional bma-hero-rise
+   keyframe ran on the SAME nodes and fought that cascade (a flash-then-hide), so
+   it's removed. With no JS, the copy is fully visible by default. */
+
+/* ---- Shared node language (cross-renderer) -------------------------------
+   The flat 2D pipeline nodes in the use-case showcase (directly below the hero)
+   now quote the WebGL hero's signature gesture: a hollow ring that FILLS IN with
+   a soft bloom when the node goes active - the same "ring fills on select" the
+   hero hubs use. Recolored to brand blue, off the old sci-fi cyan, so the hero
+   and the page speak ONE node/connector language. */
+.pipe-node {
+  background: transparent; /* hollow ring by default (was a filled dark dot) */
+  border: 1.6px solid var(--blue-steel, #6f8fa6);
+  box-shadow: none;
 }
-.hero-og-headline {
-  animation: bma-hero-rise 0.8s 0.08s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.hero-og-aside .hero-og-sub2 {
-  animation: bma-hero-rise 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.hero-og-aside .hero-og-ctas {
-  animation: bma-hero-rise 0.8s 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+.pipe-node.is-lit {
+  background: var(--blue, #1f4e73); /* fills in, brand blue (was cyan) */
+  border-color: var(--blue, #1f4e73);
+  box-shadow:
+    0 0 0 4px rgba(31, 78, 115, 0.16),
+    0 0 14px 2px rgba(31, 78, 115, 0.5); /* soft bloom echoing the hero ring */
 }
 
 /* ---- FAQ accordion: the reveal is now a JS-measured height (styles.css +
@@ -932,6 +955,15 @@ html.bma-leaving #root {
   .aw-close-grid {
     grid-template-columns: 1fr;
   }
+  /* The children carry explicit grid-column placement for the 3-col desktop
+     spread (voice in col 1, index in col 3). Left set, they force the single
+     mobile column to generate implicit tracks - re-creating a cramped 3-col
+     layout whose right track clips the practice-area names off-screen. Reset
+     them so each simply stacks in the one column. */
+  .aw-spread-voice,
+  .aw-spread-index {
+    grid-column: auto;
+  }
   .aw-spread::before {
     display: none;
   }
@@ -1247,21 +1279,228 @@ html.bma-leaving #root {
 }
 .ft__bar-credit {
   flex-basis: 100%;
-  margin-top: 0.4rem;
-  font-size: 0.7rem;
-  line-height: 1.4;
-  color: inherit;
-  opacity: 0.5;
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  /* Recessed to true fine print. Kept perceivable on purpose: CC-BY requires the
+     attribution to remain visible to a normal visitor, so this is about as dim
+     as it can go without crossing into "not really shown". */
+  color: #ffffff36;
 }
 .ft__bar-credit a {
-  color: inherit;
+  color: #ffffff5c;
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition:
     border-color 0.2s ease,
-    opacity 0.2s ease;
+    color 0.2s ease;
 }
 .ft__bar-credit a:hover {
+  color: #ffffffd9;
+  border-bottom-color: #ffffff5c;
+}
+
+/* ==========================================================================
+   Core Competencies - "The BMA Operating System": a full-width 3D laptop
+   (js/cc-laptop.js, the OPEN laptop in the model) with the REAL pipeline shown
+   on its screen in 3D via CSS3DRenderer (shares the WebGL camera, so it tilts
+   with the model). Gated to capable desktops; on small viewports /
+   reduced-motion the laptop is skipped (data-cc-os-skip) and the pipeline runs
+   full width in normal flow - the experience the page had before.
+   ========================================================================== */
+.cc-stage {
+  position: relative;
+  /* full-bleed: break out of the text column so the laptop reaches the
+     viewport edges (the page clips overflow-x, so this never adds scroll) */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+.cc-os {
+  position: relative;
+  width: 100%;
+  height: clamp(520px, 84vh, 940px);
+  /* faint plinth so the laptop reads as resting on a surface */
+  background: radial-gradient(
+    50% 38% at 50% 86%,
+    rgba(31, 78, 115, 0.1),
+    rgba(31, 78, 115, 0) 70%
+  );
+}
+.cc-os-canvas,
+.cc-os-css {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.cc-os-canvas {
+  display: block;
+}
+/* only the screen itself takes pointer input; the rest never blocks the page */
+.cc-os-css {
+  pointer-events: none;
+}
+.cc-os-canvas.is-on,
+.cc-os-css.is-on {
   opacity: 1;
-  border-bottom-color: currentColor;
+}
+
+/* the laptop display: a fixed-size element CSS3DRenderer places onto the lid */
+.cc-screen {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.05),
+    0 30px 80px -30px rgba(8, 24, 39, 0.6);
+  pointer-events: auto;
+}
+/* boot overlay: brand-blue power-on, then it fades to reveal the app */
+.cc-screen-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(
+    80% 80% at 50% 38%,
+    #1f4e73,
+    #13314a 68%,
+    #0c2236 100%
+  );
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.cc-screen.is-powering .cc-screen-boot {
+  opacity: 1;
+}
+.cc-screen.is-live .cc-screen-boot {
+  opacity: 0;
+  pointer-events: none;
+}
+.cc-screen-badge {
+  width: 130px;
+  height: 130px;
+  border-radius: 28px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 24px 60px -20px rgba(4, 16, 28, 0.7);
+  transform: scale(0.9);
+  opacity: 0;
+  transition:
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.6s ease;
+}
+.cc-screen-badge img {
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+}
+.cc-screen-word {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 40px;
+  color: #eaf3fb;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.6s ease 0.1s,
+    transform 0.6s ease 0.1s;
+}
+.cc-screen-sub {
+  font-family: Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 7px;
+  color: #9ab3c4;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.2s;
+}
+.cc-screen.is-branded .cc-screen-badge {
+  transform: scale(1);
+  opacity: 1;
+}
+.cc-screen.is-branded .cc-screen-word,
+.cc-screen.is-branded .cc-screen-sub {
+  opacity: 1;
+  transform: none;
+}
+.cc-screen-bar {
+  width: 280px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.cc-screen-bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: #cfe3f5;
+}
+.cc-screen.is-branded .cc-screen-bar span {
+  animation: cc-screen-load 2s ease forwards;
+}
+@keyframes cc-screen-load {
+  to {
+    width: 100%;
+  }
+}
+
+/* the live pipeline, mounted onto the screen */
+.cc-screen-app {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 40px 46px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.cc-screen-app .cc-flow {
+  width: 100%;
+  margin: 0;
+}
+
+/* Skip the WebGL laptop on weak/static contexts: the pipeline is never moved
+   onto the screen and stays in normal flow, full width. */
+.cc-os-beam {
+  display: none;
+}
+/* mobile: keep the laptop, just smaller (JS still skips truly weak devices) */
+@media (max-width: 700px) {
+  .cc-os {
+    height: clamp(300px, 52vh, 460px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-os {
+    display: none;
+  }
+}
+.cc-os[data-cc-os-skip] {
+  display: none;
+}
+
+/* tool popover lives ON the 3D screen, below the icon (positioned in the
+   pipeline's own layout space by cc-hero.js placePop) */
+.cc-pop {
+  position: absolute;
+  z-index: 10;
+}
+/* the "click any tool" hint reads small once the pipeline is scaled onto the
+   laptop screen - bump it up so it stays legible there */
+.cc-screen-app .cc-hint {
+  font-size: 1.45rem;
+  font-weight: 600;
+  margin-top: 1.4rem;
 }

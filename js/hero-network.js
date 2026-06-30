@@ -11,7 +11,7 @@ import { GLTFLoader } from "./vendor/GLTFLoader.js";
 // Set false to restore the original procedural "tower of light".
 const USE_MODEL = true;
 
-const NODE = { mist: 0x9ab3c4, steel: 0x6f8fa6, orange: 0xd98a4a };
+const NODE = { mist: 0x9ab3c4, steel: 0x6f8fa6, frost: 0xdce8f1 };
 
 const HUBS = [
   {
@@ -20,7 +20,7 @@ const HUBS = [
     blurb: "Turns market priorities into a clear prospecting motion.",
     deliverables: "ICP logic, market maps, workflow roadmap",
     outcome: "A focused motion the team can execute and improve.",
-    color: 0xe8b07a,
+    color: 0xeaf1f8, // cool near-white
   },
   {
     title: "Prospecting Systems",
@@ -29,7 +29,7 @@ const HUBS = [
       "Builds workflows that identify, enrich, qualify, and route target accounts.",
     deliverables: "Sourcing logic, research fields, routing rules",
     outcome: "A repeatable source of qualified accounts and contacts.",
-    color: 0x6fb6c9,
+    color: 0x8fbcd9, // light blue (logo)
   },
   {
     title: "Data Enrichment & CRM Hygiene",
@@ -37,7 +37,7 @@ const HUBS = [
     blurb: "Cleans, enriches, and refreshes account and contact data.",
     deliverables: "Field maps, validation rules, refresh logic",
     outcome: "Better targeting, cleaner handoffs, and stronger reporting.",
-    color: 0x5fb6a8,
+    color: 0x9ab3c4, // mist blue-grey (logo)
   },
   {
     title: "Multi-Channel Outbound",
@@ -46,7 +46,7 @@ const HUBS = [
     deliverables: "Message architecture, sequence logic, trigger rules",
     outcome:
       "Consistent outreach that reaches the right accounts at the right time.",
-    color: 0x8fa6d6,
+    color: 0xc4d3e0, // pale blue-grey
   },
   {
     title: "Pipeline Operations",
@@ -55,7 +55,7 @@ const HUBS = [
       "Defines ownership, routing, QA, and reporting for pipeline workflows.",
     deliverables: "CRM rules, dashboards, QA checks",
     outcome: "Clear handoffs and visibility across the funnel.",
-    color: 0xd98a4a,
+    color: 0x6f8fa6, // steel blue (logo)
   },
   {
     title: "Warm Contact Intelligence",
@@ -73,7 +73,7 @@ const HUBS = [
       "Enriches internal datasets with structured fields and quality checks.",
     deliverables: "Enriched schema, quality report, operating notes",
     outcome: "Data that can support actual GTM decisions.",
-    color: 0xb392d6,
+    color: 0x7e9bb4, // blue-grey
   },
 ];
 const HUB_HREF = "capabilities.html";
@@ -311,6 +311,18 @@ export function initHeroNetwork(canvas) {
   canvas.dataset.bmaInit = "1";
 
   const host = canvas.parentElement;
+
+  // Reduced motion: don't build or run the WebGL hero at all. The CSS already
+  // hides .hero-net and leaves the copy fully visible (we never add .hero-armed),
+  // so these users never download the GLB/panorama or spin a RAF loop they can't
+  // see - the CSS intent and JS behavior now agree.
+  if (
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    return;
+  }
+
   let width = host.clientWidth || window.innerWidth;
   let height = host.clientHeight || window.innerHeight;
 
@@ -351,19 +363,16 @@ export function initHeroNetwork(canvas) {
     tex.needsUpdate = true;
     scene.background = tex;
     scene.backgroundIntensity = 0.5; // dim it so the glowing tower stays the hero
-    scene.backgroundBlurriness = 0.05; // a hair of depth, sharper than before
+    scene.backgroundBlurriness = 0.1; // light softening: takes the edge off the
+    // low-res panorama's pixelation without going into noticeable soft-focus
     panoReady = true; // background is up; the reveal gate can clear once the
     // tower is ready too
   }
-  // Try AVIF, then WebP, then the original JPEG. The modern formats are ~62-71%
-  // lighter at the same 4096x2048 fidelity; the JPEG stays as the universal
-  // fallback. If none load, the navy gradient shows through the clear canvas.
+  // 360 backdrop: the new city360 panorama (1920x960 equirect). AVIF first
+  // (~95KB), JPEG as the universal fallback (~236KB). If neither loads, the navy
+  // gradient shows through the clear canvas.
   const panoLoader = new THREE.TextureLoader();
-  const panoSrcs = [
-    "assets/city360.avif",
-    "assets/city360.webp",
-    "assets/city360.jpg",
-  ];
+  const panoSrcs = ["assets/city360-v2.avif", "assets/city360-v2.jpg"];
   (function tryPano(i) {
     if (i >= panoSrcs.length) {
       panoReady = true; // no panorama loaded: the navy gradient stands in, so
@@ -434,7 +443,7 @@ export function initHeroNetwork(canvas) {
     const fade = depthFade(h[1]);
     nodeFade[i] = fade;
     const rr = Math.random();
-    tmp.setHex(rr < 0.14 ? NODE.orange : rr < 0.55 ? NODE.steel : NODE.mist);
+    tmp.setHex(rr < 0.14 ? NODE.frost : rr < 0.55 ? NODE.steel : NODE.mist);
     pointColors[i * 3] = tmp.r * fade;
     pointColors[i * 3 + 1] = tmp.g * fade;
     pointColors[i * 3 + 2] = tmp.b * fade;
@@ -520,35 +529,36 @@ export function initHeroNetwork(canvas) {
     tower.add(bloom);
     tower.add(ring);
     tower.add(fill);
-    const ang = (idx / HUBS.length) * Math.PI * 2 + 0.4;
-    // Every hub orbits OUTSIDE the building on one clean ring (no more "inside
-    // the volume" placement that buried glowing popups in the tower). The ring
-    // clears the model's deepest face (~26 units at the current MODEL_TARGET)
-    // and stays well inside the camera orbit (r=60), so the hubs read as lights
-    // floating around the tower, never embedded in it.
-    const rad = 32 + Math.random() * 8;
+    // The seven dots wind UP the tower in a loose helix - each a step higher and
+    // a fixed turn further around than the last - so they read as a spiral that
+    // starts low and ends high. They hug just outside the model's deepest face
+    // (~26 units from the axis): close enough to skim the facade, never touching,
+    // easing out a touch toward the wider base. Small per-dot jitter on the angle,
+    // radius, and height keeps the climb from looking mechanically even.
+    const t = idx / (HUBS.length - 1); // 0 at the lowest dot, 1 at the highest
+    const SPIRAL_TURNS = 1.5; // times the helix wraps the tower bottom-to-top
+    const ang =
+      0.4 + t * SPIRAL_TURNS * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    const rad = 29 + (1 - t) * 2.5 + (Math.random() - 0.5) * 1.6; // ~27-32, hugs
+    const y = -3 + t * 23 + (Math.random() - 0.5) * 2.4; // low (~-3) -> high (~20)
+    const home = [Math.cos(ang) * rad, y, Math.sin(ang) * rad];
     return {
       def,
       color,
       bloom,
       ring,
       fill,
-      pos: [
-        Math.cos(ang) * rad,
-        10 + ((idx + 0.5) / HUBS.length) * 12,
-        Math.sin(ang) * rad,
-      ],
-      vel: [
-        (Math.random() - 0.5) * 0.011,
-        (Math.random() - 0.5) * 0.011,
-        (Math.random() - 0.5) * 0.011,
-      ],
+      home, // fixed helix anchor; pos bobs gently around it each frame
+      pos: [home[0], home[1], home[2]],
+      bob: Math.random() * 6.28, // idle-bob phase ...
+      bobSpd: 0.013 + Math.random() * 0.011, // ... speed ...
+      bobAmp: 0.6 + Math.random() * 0.5, // ... and amplitude (skims in/out a hair)
+      bobPh: Math.random() * 6.28,
       pulse: Math.random() * 6.28,
       flare: 0,
       fade: 0,
     };
   });
-  const HB = { x0: -13, x1: 13, y0: 10, y1: 23, z0: -12, z1: 12 };
 
   // --- Links -------------------------------------------------------------
   // The tower's link topology is fixed by the home lattice (nodes only sway a
@@ -635,6 +645,9 @@ export function initHeroNetwork(canvas) {
   }
 
   function rebuildLinks(hoverHub) {
+    // Links never render while the GLB model is up (linkLines hidden), so skip
+    // the whole O(hubs x nodes) rebuild + buffer uploads in that case.
+    if (!linkLines.visible) return;
     // stream current node positions into the fixed structural links
     for (let k = 0; k < nStatic; k++) {
       const i = sI[k] * 3,
@@ -935,10 +948,10 @@ export function initHeroNetwork(canvas) {
   // without ever changing the rotation axis.
   const orbit = { az: -0.5, el: 1.0, r: 16 }; // start zoomed into the top
   const look = new THREE.Vector3(ORBIT_C.x, Y_TOP - 1, ORBIT_C.z); // smoothed look-at
-  // Never aim below this height: keeps the frame on the upper/mid tower so the
-  // dissolving base stays out of view, and when examining a low hub the look-at
-  // sits above the camera, so the camera pitches UP rather than down.
-  const LOOK_Y_MIN = 10;
+  // Floor for the look-at height. Sits below the dot helix's low end so the tour
+  // can centre the lowest dots, yet stays well above the fog-swallowed base
+  // (y < -90), so the dissolving foundation never swings into frame.
+  const LOOK_Y_MIN = -12;
   const lookTarget = new THREE.Vector3();
   const lookVel = new THREE.Vector3(); // spring velocity for the look-at
   const SLOW_MIN = 0.12; // bullet-time scale while a capability popup is open
@@ -969,7 +982,16 @@ export function initHeroNetwork(canvas) {
   function hubFraming(hp) {
     const dx = hp[0], // hp is tower-local and the tower origin is ORBIT_C,
       dz = hp[2]; // so the local coords already are the offset from centre
-    return { az: Math.atan2(dx, dz), el: 0.16, r: Math.hypot(dx, dz) + 20 };
+    const r = Math.hypot(dx, dz) + 20;
+    // Sit the camera a little BELOW the dot and look gently UP at it. Every dot
+    // gets the same easy upward angle whatever its height - high dots aren't
+    // craned up at, low dots aren't peered down on - so as the tour climbs the
+    // helix the framing stays consistent. And because the view never tilts down,
+    // the tower's dissolving base always stays below the frame (you never see the
+    // bottom). camY = hp[1] - 7 keeps the camera ~7 units under each dot; the
+    // clamp caps how far it dips for the very lowest dots.
+    const el = Math.asin(Math.max(-0.3, Math.min(0.85, (hp[1] - 7) / r)));
+    return { az: Math.atan2(dx, dz), el, r };
   }
   // sign of the shortest azimuth turn from where the camera is now to a dot's
   // framing - i.e. which way the fly-in rotates - so the dwell keeps that spin
@@ -991,6 +1013,16 @@ export function initHeroNetwork(canvas) {
     velAz = 0, // smoothed swivel speed -> consistent throw inertia
     velEl = 0,
     settle = 0; // frames the drift has been ~stopped
+  // Touch intent gate: on a touchscreen we DON'T grab the model on touch-down.
+  // We wait for the first move and decide - a sideways gesture grabs the model
+  // and locks onto it (spin freely, both axes, until release); an up/down gesture
+  // is left to the browser so the page scrolls normally (touch-action:pan-y).
+  // Mouse/pen keep the immediate 1:1 grab (a wheel scrolls the page, no conflict).
+  let pendingTouch = false, // touch is down, direction not yet decided
+    decided = false, // first-move direction has been classified
+    startX = 0,
+    startY = 0,
+    activePointerId = -1;
 
   function onPointer(e) {
     const r = host.getBoundingClientRect();
@@ -1000,7 +1032,9 @@ export function initHeroNetwork(canvas) {
       pointer.x >= 0 && pointer.x <= 1 && pointer.y >= 0 && pointer.y <= 1;
     ndc.set(pointer.x * 2 - 1, -(pointer.y * 2) + 1);
   }
-  function onDown(e) {
+  // Actually start the grab (used directly for mouse/pen, and on touch once a
+  // sideways gesture has been confirmed).
+  function beginDrag(e) {
     dragging = true;
     manual = true; // grabbing interrupts the tour and any drift
     dragMoved = 0;
@@ -1015,7 +1049,41 @@ export function initHeroNetwork(canvas) {
       canvas.setPointerCapture(e.pointerId);
     } catch (_) {}
   }
+  function onDown(e) {
+    onPointer(e); // register the touch/click position so a tap can hit a hub
+    if (e.pointerType === "touch") {
+      // Defer the grab. The first move decides: sideways -> spin the model,
+      // up/down -> let the page scroll (we never capture, so pan-y scrolls).
+      pendingTouch = true;
+      decided = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      activePointerId = e.pointerId;
+      return;
+    }
+    beginDrag(e); // mouse / pen: immediate 1:1 grab (unchanged)
+  }
   function onDrag(e) {
+    // touch, direction not yet decided: classify it on the first real movement
+    if (pendingTouch && !decided && e.pointerId === activePointerId) {
+      const tdx = e.clientX - startX,
+        tdy = e.clientY - startY;
+      if (Math.abs(tdx) + Math.abs(tdy) < 8) return; // wait for a clear direction
+      decided = true;
+      pendingTouch = false;
+      if (Math.abs(tdx) > Math.abs(tdy)) {
+        // sideways intent: grab and lock onto the model. Seed from the touch
+        // origin so the initial movement spins it 1:1, then it spins freely
+        // (both axes) until release - the browser won't scroll this gesture
+        // because pan-y only claims a vertical-first pan.
+        beginDrag(e);
+        dragX = startX;
+        dragY = startY;
+        // fall through to apply this frame's delta below
+      } else {
+        return; // up/down intent: hands off - let the page scroll normally
+      }
+    }
     if (!dragging) return;
     const dx = e.clientX - dragX,
       dy = e.clientY - dragY;
@@ -1026,7 +1094,24 @@ export function initHeroNetwork(canvas) {
     pendEl += dy * 0.006;
   }
   function onUp() {
-    if (!dragging) return;
+    var wasTap = pendingTouch && !decided; // touch came down but never became a drag
+    pendingTouch = false; // clear any deferred-touch state on release/cancel
+    decided = false;
+    activePointerId = -1;
+    if (!dragging) {
+      // A tap that never grabbed still opens the capability dot under it. hoverHub
+      // is only refreshed once per render frame, and a quick tap can release before
+      // the next frame - so hit-test synchronously here off the tap's own position.
+      if (wasTap && pointer.inside) {
+        raycaster.setFromCamera(ndc, camera);
+        const hit = raycaster.intersectObjects(
+          hubs.map((h) => h.ring),
+          false,
+        )[0];
+        if (hit) openHub(hit.object.userData.hub);
+      }
+      return;
+    }
     dragging = false;
     settle = 0;
     velAz *= 1.25; // gentle throw; velAz already holds the smoothed swivel speed
@@ -1037,6 +1122,9 @@ export function initHeroNetwork(canvas) {
   window.addEventListener("pointermove", onDrag, { passive: true });
   canvas.addEventListener("pointerdown", onDown);
   window.addEventListener("pointerup", onUp);
+  // A touch that turns into a vertical scroll gets pointercancel as the browser
+  // takes the gesture for scrolling - treat it exactly like a release.
+  window.addEventListener("pointercancel", onUp);
 
   function resize() {
     width = host.clientWidth || window.innerWidth;
@@ -1095,6 +1183,7 @@ export function initHeroNetwork(canvas) {
     renderer.setSize(width, height, false);
   }
   function onUserScroll() {
+    if (dragging) return; // spinning the model is not scrolling - keep it crisp
     scrolling = true;
     setDpr(DPR_SCROLL);
     clearTimeout(qualityTimer);
@@ -1127,55 +1216,64 @@ export function initHeroNetwork(canvas) {
     if (dt > 0.1) dt = 0.1; // clamp after a tab stall or a paused loop
     // bullet-time while a capability popup is open: ease the whole scene's
     // motion down a lot, then back up once the cursor leaves the dot/card.
+    // Bullet-time eases the ambient motion while a card is readable: during the
+    // auto-dwell, or while the user reads a card after grabbing. Plain hover (no
+    // grab) never triggers it - the walkthrough ignores hover.
     const showing =
-      (tourHub >= 0 && !manual) || lastHub >= 0 || hoverHub >= 0 || popPinned;
+      (tourHub >= 0 && !manual) ||
+      (manual && (hoverHub >= 0 || lastHub >= 0 || popPinned));
     slow += ((showing && !dragging ? SLOW_MIN : 1) - slow) * 0.06;
     swayT += 0.01 * slow;
     const time = swayT;
 
-    // nodes spring to a gently swaying tower home
-    for (let i = 0; i < COUNT; i++) {
-      const p = i * 3;
-      const tx = homes[p] + Math.sin(time * 0.4 + i * 0.6) * 0.22;
-      const ty = homes[p + 1] + Math.cos(time * 0.32 + i * 0.4) * 0.16;
-      const tz = homes[p + 2] + Math.sin(time * 0.5 + i * 0.9) * 0.22;
-      velocities[p] += (tx - positions[p]) * SPRING;
-      velocities[p + 1] += (ty - positions[p + 1]) * SPRING;
-      velocities[p + 2] += (tz - positions[p + 2]) * SPRING;
-      velocities[p] *= DAMP;
-      velocities[p + 1] *= DAMP;
-      velocities[p + 2] *= DAMP;
-      positions[p] += velocities[p];
-      positions[p + 1] += velocities[p + 1];
-      positions[p + 2] += velocities[p + 2];
-    }
-    // subtle cursor repulsion (skipped while dragging the model)
-    if (pointer.inside && !dragging) {
-      v.set(ndc.x, ndc.y, 0.5).unproject(camera);
-      v.sub(camera.position).normalize();
-      const d = (ORBIT_C.z - camera.position.z) / v.z;
-      v.set(
-        camera.position.x + v.x * d,
-        camera.position.y + v.y * d,
-        ORBIT_C.z,
-      );
-      tower.worldToLocal(v);
-      const cx = v.x,
-        cy = v.y,
-        R2 = 40;
+    // Skip all hidden-lattice work while the GLB model shows (the normal case):
+    // the spring sim, cursor repulsion, and points-buffer upload only matter when
+    // the procedural lattice is restored as a fallback.
+    if (nodePoints.visible) {
+      // nodes spring to a gently swaying tower home
       for (let i = 0; i < COUNT; i++) {
-        const dx = positions[i * 3] - cx,
-          dy = positions[i * 3 + 1] - cy;
-        const dsq = dx * dx + dy * dy;
-        if (dsq < R2 && dsq > 0.01) {
-          const f = (1 - dsq / R2) * 0.02,
-            inv = 1 / Math.sqrt(dsq);
-          velocities[i * 3] += dx * inv * f;
-          velocities[i * 3 + 1] += dy * inv * f;
+        const p = i * 3;
+        const tx = homes[p] + Math.sin(time * 0.4 + i * 0.6) * 0.22;
+        const ty = homes[p + 1] + Math.cos(time * 0.32 + i * 0.4) * 0.16;
+        const tz = homes[p + 2] + Math.sin(time * 0.5 + i * 0.9) * 0.22;
+        velocities[p] += (tx - positions[p]) * SPRING;
+        velocities[p + 1] += (ty - positions[p + 1]) * SPRING;
+        velocities[p + 2] += (tz - positions[p + 2]) * SPRING;
+        velocities[p] *= DAMP;
+        velocities[p + 1] *= DAMP;
+        velocities[p + 2] *= DAMP;
+        positions[p] += velocities[p];
+        positions[p + 1] += velocities[p + 1];
+        positions[p + 2] += velocities[p + 2];
+      }
+      // subtle cursor repulsion (skipped while dragging the model)
+      if (pointer.inside && !dragging) {
+        v.set(ndc.x, ndc.y, 0.5).unproject(camera);
+        v.sub(camera.position).normalize();
+        const d = (ORBIT_C.z - camera.position.z) / v.z;
+        v.set(
+          camera.position.x + v.x * d,
+          camera.position.y + v.y * d,
+          ORBIT_C.z,
+        );
+        tower.worldToLocal(v);
+        const cx = v.x,
+          cy = v.y,
+          R2 = 40;
+        for (let i = 0; i < COUNT; i++) {
+          const dx = positions[i * 3] - cx,
+            dy = positions[i * 3 + 1] - cy;
+          const dsq = dx * dx + dy * dy;
+          if (dsq < R2 && dsq > 0.01) {
+            const f = (1 - dsq / R2) * 0.02,
+              inv = 1 / Math.sqrt(dsq);
+            velocities[i * 3] += dx * inv * f;
+            velocities[i * 3 + 1] += dy * inv * f;
+          }
         }
       }
-    }
-    pointsGeo.attributes.position.needsUpdate = true;
+      pointsGeo.attributes.position.needsUpdate = true;
+    } // end hidden-lattice block
 
     // floating hubs (bounce inside their box)
     flareTimer -= slow;
@@ -1185,12 +1283,13 @@ export function initHeroNetwork(canvas) {
     }
     for (let h = 0; h < hubs.length; h++) {
       const n = hubs[h];
-      n.pos[0] += n.vel[0] * slow;
-      n.pos[1] += n.vel[1] * slow;
-      n.pos[2] += n.vel[2] * slow;
-      if (n.pos[0] < HB.x0 || n.pos[0] > HB.x1) n.vel[0] *= -1;
-      if (n.pos[1] < HB.y0 || n.pos[1] > HB.y1) n.vel[1] *= -1;
-      if (n.pos[2] < HB.z0 || n.pos[2] > HB.z1) n.vel[2] *= -1;
+      // idle bob around the fixed helix home: the dots skim in and out a hair
+      // without ever drifting, so the spiral keeps its bottom-to-top shape (the
+      // old bounce-box drift would have pulled them all into one height band).
+      n.bob += n.bobSpd * slow;
+      n.pos[0] = n.home[0] + Math.sin(n.bob) * n.bobAmp;
+      n.pos[1] = n.home[1] + Math.cos(n.bob * 0.8 + n.bobPh) * n.bobAmp * 0.8;
+      n.pos[2] = n.home[2] + Math.sin(n.bob * 1.1 + n.bobPh) * n.bobAmp;
       n.pulse += 0.018 * slow;
       if (n.flare > 0) n.flare = Math.max(0, n.flare - 0.007 * slow);
       const breathe = 0.5 + 0.5 * Math.sin(n.pulse);
@@ -1221,28 +1320,32 @@ export function initHeroNetwork(canvas) {
 
     rebuildLinks(hoverHub);
 
-    for (let k = 0; k < PACKETS; k++) {
-      const s = pkState[k];
-      s.t += s.speed * slow;
-      if (s.t >= 1 || s.i === s.j) {
-        s.t = 0;
-        if (nPairs > 0) {
-          const idx = (Math.random() * nPairs) | 0;
-          s.i = sI[idx];
-          s.j = sJ[idx];
+    // Signal packets ride the hidden lattice links - skip them too while the
+    // model is up; they never render.
+    if (packets.visible) {
+      for (let k = 0; k < PACKETS; k++) {
+        const s = pkState[k];
+        s.t += s.speed * slow;
+        if (s.t >= 1 || s.i === s.j) {
+          s.t = 0;
+          if (nPairs > 0) {
+            const idx = (Math.random() * nPairs) | 0;
+            s.i = sI[idx];
+            s.j = sJ[idx];
+          }
+          s.speed = 0.0022 + Math.random() * 0.005;
         }
-        s.speed = 0.0022 + Math.random() * 0.005;
+        const ai = s.i * 3,
+          bi = s.j * 3,
+          t = s.t;
+        pkPos[k * 3] = positions[ai] + (positions[bi] - positions[ai]) * t;
+        pkPos[k * 3 + 1] =
+          positions[ai + 1] + (positions[bi + 1] - positions[ai + 1]) * t;
+        pkPos[k * 3 + 2] =
+          positions[ai + 2] + (positions[bi + 2] - positions[ai + 2]) * t;
       }
-      const ai = s.i * 3,
-        bi = s.j * 3,
-        t = s.t;
-      pkPos[k * 3] = positions[ai] + (positions[bi] - positions[ai]) * t;
-      pkPos[k * 3 + 1] =
-        positions[ai + 1] + (positions[bi + 1] - positions[ai + 1]) * t;
-      pkPos[k * 3 + 2] =
-        positions[ai + 2] + (positions[bi + 2] - positions[ai + 2]) * t;
-    }
-    pkGeo.attributes.position.needsUpdate = true;
+      pkGeo.attributes.position.needsUpdate = true;
+    } // end hidden-packets block
 
     // --- camera: scripted tour around the building centre, grab-interruptible
     // Always orbit ORBIT_C; the look-at point eases between the centre and the
@@ -1254,7 +1357,7 @@ export function initHeroNetwork(canvas) {
       OML = 4.4; // look-at smoothing frequency
     let omL = OML; // look-at frequency, ramped down briefly after a grab resumes
     if (manual) {
-      lookTarget.copy(ORBIT_C); // grab looks at the centre = clean building orbit
+      lookTarget.set(ORBIT_C.x, 10, ORBIT_C.z); // grab: clean orbit, framed mid-tower
       if (dragging) {
         orbit.az += pendAz; // direct: responsive, no lag
         orbit.el = Math.max(-0.35, Math.min(1.35, orbit.el + pendEl));
@@ -1280,12 +1383,12 @@ export function initHeroNetwork(canvas) {
       }
     } else {
       resumeT += dt; // count up from a resume so the spring ramps back to full
-      if (!(camState === "atHub" && popPinned)) stateT += dt; // hovering holds dwell
+      stateT += dt; // the walkthrough advances on its own clock; hover never holds it
       if (camState === "intro") {
         tAz = OV.az;
         tEl = OV.el;
         tR = OV.r;
-        lookTarget.set(ORBIT_C.x, 0, ORBIT_C.z);
+        lookTarget.set(ORBIT_C.x, 10, ORBIT_C.z);
         if (stateT >= T_INTRO) {
           camState = "pause";
           stateT = 0;
@@ -1294,7 +1397,7 @@ export function initHeroNetwork(canvas) {
         tAz = OV.az + stateT * 0.1; // slow rotation while holding the overview
         tEl = OV.el;
         tR = OV.r;
-        lookTarget.set(ORBIT_C.x, 0, ORBIT_C.z);
+        lookTarget.set(ORBIT_C.x, 10, ORBIT_C.z);
         if (stateT >= T_PAUSE) {
           tourIdx = 0;
           approachDir = dirToHub(0);
@@ -1386,12 +1489,12 @@ export function initHeroNetwork(canvas) {
         f.op * reveal * (0.82 + 0.18 * Math.sin(time * 0.5 + f.phase));
     }
 
-    // during the auto explanatory sequence (flying to / dwelling on a dot, and
-    // not user-driven) dot selection is locked out - you can only pick another
-    // dot when zoomed out (intro / pause) or once you've grabbed control
-    const tourLocked =
-      !manual && (camState === "toHub" || camState === "atHub");
-    if (pointer.inside && !tourLocked) {
+    // Hit-test the nodes every frame so the cursor shows they're clickable and a
+    // click can land - but hover NEVER drives the camera. The guided walkthrough
+    // runs on its own and is interrupted ONLY by an explicit grab (drag-to-
+    // swivel) or a click on a node / the popup; moving the cursor over the scene
+    // never pauses, hijacks, or re-aims it.
+    if (pointer.inside) {
       raycaster.setFromCamera(ndc, camera);
       const hit = raycaster.intersectObjects(
         hubs.map((h) => h.ring),
@@ -1423,9 +1526,10 @@ export function initHeroNetwork(canvas) {
       tourPop.classList.remove("is-on");
       tourShown = -1;
     }
-    // manual hover card - dot-anchored, suppressed during the guided tour
+    // Dot-anchored hover card: only once the user has grabbed manual control, so
+    // it can never pop up from a hover during the automated walkthrough.
     let activeHub = -1;
-    if (!dragging && !tourActive) {
+    if (!dragging && manual) {
       if (hoverHub >= 0) activeHub = hoverHub;
       else if (popPinned && lastHub >= 0) activeHub = lastHub;
     }
@@ -1481,7 +1585,6 @@ export function initHeroNetwork(canvas) {
   let rafId = 0;
   let looping = false; // guards against a second concurrent RAF chain
   let revealed = false; // canvas (panorama + tower) has been faded in
-  let copyShown = false; // headline copy has been revealed
   function loop() {
     if (!running) {
       looping = false;
@@ -1500,12 +1603,6 @@ export function initHeroNetwork(canvas) {
       lastStepAt = now;
     }
     step();
-    // Copy reveals on the first rendered frame - text over the navy gradient,
-    // never blocked by the heavy model stream.
-    if (!copyShown) {
-      copyShown = true;
-      host.classList.add("is-revealed");
-    }
     // Canvas reveals only once BOTH the panorama and the tower are ready, on a
     // frame that already shows them - so the background never appears first and
     // sits blocky/empty while the model streams in.
@@ -1523,10 +1620,12 @@ export function initHeroNetwork(canvas) {
     looping = true;
     rafId = requestAnimationFrame(loop);
   }
-  host.classList.add("hero-armed"); // about to render: drive the copy reveal
+  host.classList.add("hero-armed");
+  // Reveal the copy on the very next frame - decoupled from the 3D/model load so
+  // the headline, eyebrow, and CTA never wait on the GLB or panorama. The canvas
+  // still fades in separately once pano + model are ready.
+  requestAnimationFrame(() => host.classList.add("is-revealed"));
   startLoop();
-  // safety net: never leave the copy hidden if the first frame is delayed
-  setTimeout(() => host.classList.add("is-revealed"), 2500);
   // safety net: if the tower stream is very slow or stalls, don't hold the hero
   // blank forever - let the loop reveal whatever has loaded after a few seconds.
   setTimeout(() => {
@@ -1543,6 +1642,7 @@ export function initHeroNetwork(canvas) {
     window.removeEventListener("pointermove", onDrag);
     canvas.removeEventListener("pointerdown", onDown);
     window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
     window.removeEventListener("resize", resize);
     pop.remove();
     renderer.dispose();

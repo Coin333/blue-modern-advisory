@@ -107,7 +107,10 @@ function initScrollCoupled(getScroll) {
     if (navWrap) navWrap.classList.toggle("is-scrolled", scrollY > 24);
     if (navPill) navPill.classList.toggle("nav-pill--scrolled", scrollY > 24);
 
-    if (!reduceMotion && marquees.length) {
+    // Velocity skew is a fine-pointer flourish only. On touch the scroll-velocity
+    // signal is coarse and jumpy, so skewing the marquee made it look blocky -
+    // leave the ticker unskewed there so it runs smoothly.
+    if (!reduceMotion && finePointer && marquees.length) {
       const skew = clamp((velocity || 0) * 0.18, -4, 4);
       marquees.forEach((m) => {
         m.style.transform = `skewX(${skew.toFixed(2)}deg)`;
@@ -219,6 +222,22 @@ function initPipelineStack() {
   // Reduced motion / no observer: render static, fully-stacked, no recede.
   if (reduceMotion || !("IntersectionObserver" in window)) {
     stack.classList.add("is-active");
+    return;
+  }
+
+  // Touch / coarse-pointer / small screens: do NOT fake-pin the deck. The
+  // transform pin is driven by the Lenis-smoothed scroll (syncTouch off), so on
+  // a phone it fights momentum scroll and feels like it locks you in place. Let
+  // the cards flow naturally; just light the per-card SVG build animations as the
+  // deck scrolls into view (is-active gates them in CSS).
+  const noPin = !finePointer || window.innerWidth < 768;
+  if (noPin) {
+    const io = new IntersectionObserver(
+      (entries) =>
+        stack.classList.toggle("is-active", entries[0].isIntersecting),
+      { threshold: 0, rootMargin: "0px 0px -10% 0px" },
+    );
+    io.observe(stack);
     return;
   }
 

@@ -156,18 +156,28 @@ if (flow) {
   function placePop(i) {
     const chip = chips[i];
     if (!chip || !pop) return;
-    const cr = chip.getBoundingClientRect();
-    let left = cr.left + cr.width / 2 - pop.offsetWidth / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - pop.offsetWidth - 8));
+    // Position in the pipeline's own (untransformed) layout space so the card
+    // lands below the icon ON the 3D screen. offsetLeft/Top ignore the CSS3D
+    // transform, unlike getBoundingClientRect (which returns projected coords).
+    let x = 0;
+    let y = 0;
+    let n = chip;
+    while (n && n !== flow) {
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      n = n.offsetParent;
+    }
+    let left = x + chip.offsetWidth / 2 - pop.offsetWidth / 2;
+    left = Math.max(6, Math.min(left, flow.offsetWidth - pop.offsetWidth - 6));
     pop.style.left = left + "px";
-    pop.style.top = cr.bottom + 12 + "px";
+    pop.style.top = y + chip.offsetHeight + 10 + "px";
   }
 
   function openPop(i) {
     const chip = chips[i];
     if (!chip || !pop) return;
     openIdx = i;
-    flow.classList.add("is-paused");
+    // intentionally do NOT pause the pipeline - opening a tool keeps it running
     const name = chip.getAttribute("data-name") || "";
     pop.querySelector(".cc-pop-name").textContent = name;
     pop.querySelector(".cc-pop-desc").textContent =
@@ -224,5 +234,55 @@ if (flow) {
     if (openIdx !== -1) placePop(openIdx);
   });
 
-  runIntro();
+  /* ---------------- boot handoff: the laptop emits the pipeline ----------- */
+  // The laptop (cc-laptop.js) powers on, then dispatches `bma:os-emit`. Until
+  // then the pipeline is held blank so it visibly springs FROM the laptop. On
+  // reduced motion nothing is held (the static final state is already correct).
+  // If the laptop is skipped/absent it fires the event immediately, and a
+  // fallback timer guarantees the pipeline never stays hidden.
+  function hold() {
+    flow.classList.add("cc-flow--prep");
+    chips.forEach((c) => {
+      c.style.transition = "none";
+      c.style.opacity = "0";
+    });
+    if (bma) {
+      bma.style.transition = "none";
+      bma.style.opacity = "0";
+    }
+  }
+
+  // When the pipeline is embedded on the 3D laptop screen (window.__bmaEmbed),
+  // the flat cluster->chain choreography doesn't apply (its measurements are in
+  // 2D). Just clear the hold and let the CSS signal loop play on the screen.
+  function simpleReveal() {
+    flow.classList.remove("cc-flow--prep");
+    chips.forEach((c) => {
+      c.style.transition = "";
+      c.style.opacity = "";
+      c.style.transform = "";
+    });
+    if (bma) {
+      bma.style.transition = "";
+      bma.style.opacity = "";
+      bma.style.transform = "";
+    }
+  }
+
+  if (reduce) {
+    runIntro(); // returns early; final static state already shown
+  } else {
+    hold();
+    const stage = document.querySelector("[data-cc-stage]");
+    let ran = false;
+    const go = () => {
+      if (ran) return;
+      ran = true;
+      if (stage) stage.classList.add("is-live");
+      if (window.__bmaEmbed) simpleReveal();
+      else runIntro();
+    };
+    document.addEventListener("bma:os-emit", go, { once: true });
+    setTimeout(go, 7000); // failsafe if the emit never arrives
+  }
 }

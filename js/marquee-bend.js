@@ -12,6 +12,14 @@
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduce) return; // honour reduced-motion: leave the logos flat
 
+  // Touch / coarse-pointer devices have no hover, and pointerenter fires on tap -
+  // which made the logo tip and feel blocky on the moving ticker. Skip the bend
+  // there entirely; the logos are plain <a> links, so a tap just opens them.
+  const finePointer =
+    window.matchMedia &&
+    window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!finePointer) return;
+
   const BEND = 22; // degrees, matches the original Stanford turn
 
   items.forEach(function (el) {

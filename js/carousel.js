@@ -28,9 +28,17 @@
     !window.CSS ||
     !CSS.supports ||
     CSS.supports("transform-style", "preserve-3d");
+  // Touch / coarse-pointer devices get the readable flat grid too: the scroll-
+  // pinned 3D ring relies on the Lenis-smoothed scroll, which runs with syncTouch
+  // off, so on a phone or touch tablet the spin scrubs blockily and the pin fights
+  // momentum scroll. Routing them to the flat grid is the clean experience.
+  const coarse =
+    !!window.matchMedia &&
+    (window.matchMedia("(hover: none)").matches ||
+      window.matchMedia("(pointer: coarse)").matches);
   // capability gate: leave the flat grid in place when we can't do this well -
   // but still honor a cross-page ?card=N by scrolling to that card's element
-  if (reduce || !supports3d || window.innerWidth < 860) {
+  if (reduce || !supports3d || coarse || window.innerWidth < 860) {
     const ci = cardParam();
     if (ci >= 0) {
       requestAnimationFrame(() =>
@@ -97,8 +105,35 @@
     anchor = wrapDocTop - targetTop;
     pinDist = Math.min(vh * 1.4, section.offsetHeight - wrapH - targetTop - 20);
   }
+  // Apply only the pin translate for the current scroll. Deterministic (no easing)
+  // and uses the cached anchor, so it is safe to call both from the rAF loop and
+  // synchronously on every Lenis scroll update. The latter keeps the stage locked
+  // to the scroll even when the rAF loop is momentarily starved - e.g. while the
+  // laptop GLB decodes during a ?card= landing - which would otherwise leave the
+  // cards unpinned for a frame and flash them off the top of the viewport.
+  function applyPin() {
+    if (anchor === null) return 0;
+    if (pinDist <= 0) {
+      if (curT !== 0) {
+        curT = 0;
+        wrap.style.transform = "";
+      }
+      return 0;
+    }
+    const t = clamp(scrollPos() - anchor, 0, pinDist);
+    curT = t;
+    wrap.style.transform = t ? "translateY(" + t.toFixed(1) + "px)" : "";
+    return t;
+  }
   function frame() {
-    if (anchor === null) measure();
+    // Re-measure every frame the ring is live. The Core Competencies section
+    // above us mounts an interactive panel after load and collapses by a few
+    // hundred px once it settles, moving our document position with no resize
+    // event - a once-cached anchor goes stale and pins the cards too high, off
+    // the top. measure() is feedback-safe (it subtracts the current transform),
+    // so re-reading geometry each frame self-corrects without oscillating; the
+    // cost is one layout read per frame, and only while the ring is on screen.
+    measure();
     const now = performance.now();
     let dt = (now - lastNow) / 1000;
     lastNow = now;
@@ -112,9 +147,7 @@
       return;
     }
     const s = scrollPos();
-    const t = clamp(s - anchor, 0, pinDist);
-    curT = t;
-    wrap.style.transform = t ? "translateY(" + t.toFixed(1) + "px)" : "";
+    const t = applyPin();
     const scrollAngle = -clamp(t / pinDist, 0, 1) * TURN;
 
     // when the scroll settles, snap the ring onto the nearest card (you land on a
@@ -165,6 +198,19 @@
   window.addEventListener("resize", () => {
     anchor = null;
   });
+
+  // Keep the pin glued to Lenis's scroll. Lenis emits "scroll" the instant it
+  // updates its smoothed value, so applying the translate here (in addition to
+  // the rAF loop) guarantees the stage is pinned for the exact scroll Lenis just
+  // rendered - no one-frame lag, even mid-glide on a ?card= landing. Lenis is set
+  // up in a later module script, so poll briefly until it exists, then subscribe.
+  (function bindLenisScroll(tries) {
+    if (window.lenis && typeof window.lenis.on === "function") {
+      window.lenis.on("scroll", applyPin);
+    } else if (tries < 120) {
+      requestAnimationFrame(() => bindLenisScroll(tries + 1));
+    }
+  })(0);
 
   // --- Sideways scroll also walks the ring -------------------------------
   // A horizontal trackpad swipe (or shift+wheel) while the ring is pinned is
@@ -255,16 +301,31 @@
   };
 
   // cross-page landing: if the hero sent us here as ?card=N, glide the ring to
-  // that card once Lenis is up and the ring geometry is measurable
+  // that card once Lenis is up and the ring geometry has stopped moving. The
+  // Core Competencies panel above collapses by a few hundred px ~0.5s after load,
+  // so landing the instant Lenis is ready glides to a target computed from the
+  // pre-collapse layout; the collapse then lands mid-glide and the cards overshoot
+  // the pin and flash off the top. Wait for the target to hold steady across a few
+  // frames (layout settled) before gliding, with a hard cap as a safety net.
   const landIdx = cardParam();
   if (landIdx >= 0) {
     let tries = 0;
+    let lastTarget = null;
+    let steadyFrames = 0;
     (function land() {
-      if (window.lenis && cardScrollTarget(landIdx) != null) {
-        window.gtmCarousel.scrollToCard(landIdx);
-      } else if (tries++ < 90) {
-        requestAnimationFrame(land);
+      const y = window.lenis ? cardScrollTarget(landIdx) : null;
+      if (y != null) {
+        steadyFrames =
+          lastTarget != null && Math.abs(y - lastTarget) < 2
+            ? steadyFrames + 1
+            : 0;
+        lastTarget = y;
+        if (steadyFrames >= 5 || tries > 90) {
+          window.gtmCarousel.scrollToCard(landIdx);
+          return;
+        }
       }
+      if (tries++ < 150) requestAnimationFrame(land);
     })();
   }
 
