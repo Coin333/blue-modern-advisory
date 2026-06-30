@@ -26396,3 +26396,403 @@ a.trusted-marquee-item {
     transition: none;
   }
 }
+
+/* =========================================================================
+   Split floating nav (2026 redesign)
+   Brand (logo + name) sits free on the left; a single self-contained glassy
+   pill on the right holds the links + the circular-arrow CTA. This block is
+   appended last so it overrides every earlier scattered .nav-* rule.
+
+   Works-on-ANY-background contract:
+   1. The right pill carries its OWN contrast (light glass + blur + border +
+      shadow), so links/CTA stay legible over dark hero OR plain white.
+   2. The left brand defaults to DARK ink (readable on white). Only when the
+      wrapper is flagged .nav-theme-dark (top of the dark hero on index) does
+      the name go light. enhance.js strips that flag once you scroll past the
+      hero, so the brand never ends up white-on-white.
+   ========================================================================= */
+.nav-wrapper--split {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px clamp(16px, 4vw, 40px);
+}
+
+/* ---- Left: brand, free of any container ---- */
+.nav-wrapper--split .nav-brand {
+  pointer-events: all;
+  gap: 11px;
+  flex-shrink: 0;
+  /* default ink is dark so the name is always readable on a light page */
+  color: var(--ink);
+}
+.nav-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  overflow: hidden;
+  background: #ffffff;
+  /* a subtle ring + shadow so the mark always has an edge, even on white */
+  border: 1px solid rgba(31, 78, 115, 0.18);
+  box-shadow: 0 2px 8px rgba(8, 24, 39, 0.12);
+  flex-shrink: 0;
+}
+.nav-brand-logo img {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+.nav-wrapper--split .nav-brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.nav-wrapper--split .nav-brand-dark {
+  font-weight: 600;
+  color: var(--ink);
+  transition: color 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-wrapper--split .nav-brand-light {
+  font-weight: 400;
+  color: var(--blue);
+  transition: color 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Over the dark hero (index, at the top): switch the name to light, give the
+   logo chip a luminous ring instead of a dark one. enhance.js removes
+   .nav-theme-dark once scrolled past the hero so it reverts to dark ink. */
+.nav-wrapper--split.nav-theme-dark .nav-brand-dark {
+  color: #f3f8fc;
+}
+.nav-wrapper--split.nav-theme-dark .nav-brand-light {
+  color: #9ec6e2;
+}
+.nav-wrapper--split.nav-theme-dark .nav-brand-logo {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 2px 12px rgba(4, 12, 22, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* ---- Right: the self-contained pill (links + CTA) ---- */
+.nav-pill--bar {
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 7px 7px 10px;
+  border-radius: 16px;
+  pointer-events: all;
+  /* the pill owns its contrast: light glass, blur, hairline border, soft drop */
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(31, 78, 115, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 30px rgba(8, 24, 39, 0.12),
+    0 2px 6px rgba(8, 24, 39, 0.06);
+}
+.nav-pill--bar .nav-links {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 2px;
+}
+.nav-pill--bar .nav-links a {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2c4256;
+}
+.nav-pill--bar .nav-links a:hover {
+  color: var(--blue);
+  background: rgba(31, 78, 115, 0.08);
+  transform: none;
+}
+.nav-pill--bar .nav-links a.active {
+  color: var(--blue);
+  background: rgba(31, 78, 115, 0.1);
+  font-weight: 600;
+}
+.nav-pill--bar .nav-cta-group {
+  margin-left: 2px;
+}
+
+/* ---- Circular-arrow CTA: label + solid dot holding a right arrow ---- */
+.nav-cta--arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 8px 0 18px;
+  border-radius: 11px;
+  background: var(--blue-dark);
+  color: #fff !important;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(8, 24, 39, 0.28);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+.nav-cta--arrow:hover {
+  background: var(--blue);
+  box-shadow: 0 6px 18px rgba(8, 24, 39, 0.34);
+  transform: translateY(-1px);
+}
+.nav-cta--arrow:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.nav-cta-label {
+  line-height: 1;
+}
+.nav-cta-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  flex-shrink: 0;
+  transition:
+    background 0.2s ease,
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-cta--arrow:hover .nav-cta-dot {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(2px);
+}
+.nav-cta-dot svg {
+  display: block;
+}
+
+/* The scroll-aware flag (set by enhance.js at scrollY>24) firms up the pill
+   slightly once you leave the top, matching the existing condense behavior. */
+.nav-wrapper--split.is-scrolled .nav-pill--bar {
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 34px rgba(8, 24, 39, 0.16),
+    0 2px 6px rgba(8, 24, 39, 0.08);
+}
+
+/* ---- Hamburger lives outside the pill on the right at small widths ---- */
+.nav-wrapper--split .nav-hamburger {
+  margin-left: 4px;
+}
+
+/* ---- Responsive: collapse the pill into the existing hamburger menu ---- */
+@media (max-width: 860px) {
+  .nav-wrapper--split .nav-pill--bar {
+    display: none;
+  }
+  .nav-wrapper--split .nav-hamburger {
+    display: flex;
+  }
+  /* hamburger bars adapt to the dark hero on index, dark ink elsewhere */
+  .nav-wrapper--split.nav-theme-dark .nav-hamburger span {
+    background: #eaf2f8;
+  }
+}
+@media (max-width: 480px) {
+  .nav-wrapper--split {
+    padding: 12px 16px;
+  }
+  .nav-wrapper--split .nav-brand-text {
+    font-size: 0.95rem;
+  }
+}
+
+/* ===== Hero: two-sphere scroll roll (#home.hero-sphere) =====================
+   Tall section whose stage is fake-pinned by js/hero-spheres.js for one screen
+   of scroll while a small sphere rolls along the big planet's limb on the
+   canvas. --hp (0..1), set by the script each frame, fades + lifts the copy.
+   Falls back to a static navy hero with copy if the canvas/JS never runs. ==== */
+#home.hero-sphere {
+  position: relative;
+  height: 200vh; /* 100vh stage + 100vh of scrub room */
+  background: #080f1e;
+  --hp: 0;
+}
+#home.hero-sphere.hero-sphere--static {
+  height: 100svh;
+}
+/* avoid a flash of empty scroll room before JS picks the no-pin path */
+@media (max-width: 767px), (hover: none), (prefers-reduced-motion: reduce) {
+  #home.hero-sphere {
+    height: 100svh;
+  }
+}
+.hero-sphere-stage {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #080f1e;
+}
+.hero-sphere-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.hero-sphere-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.hero-sphere-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2.5rem;
+  padding: clamp(26px, 5.5vw, 88px);
+  padding-top: 128px; /* clear the fixed nav */
+  opacity: calc(1 - var(--hp) * 1.55);
+  transform: translateY(calc(var(--hp) * -34px));
+}
+.hero-sphere-lead {
+  max-width: 640px;
+}
+.hero-sphere-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 22px;
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  color: #9fb6cc;
+}
+.hero-sphere-eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5fc6dc;
+  box-shadow: 0 0 10px 1px rgba(95, 198, 220, 0.8);
+}
+.hero-sphere-headline {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2.9rem, 7vw, 5.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: #f3f7fb;
+}
+.hero-sphere-tag {
+  margin: 20px 0 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  color: #b8c8d8;
+}
+.hero-sphere-aside {
+  align-self: flex-end;
+  max-width: 392px;
+}
+.hero-sphere-sub {
+  margin: 0 0 26px;
+  font-size: 1.02rem;
+  line-height: 1.56;
+  color: #c2d0de;
+}
+.hero-sphere-ctas {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-sphere-btn-primary,
+.hero-sphere-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    border-color 0.25s ease;
+}
+.hero-sphere-btn-primary {
+  background: #f4f8fc;
+  color: #0a1626;
+  border: 1px solid #f4f8fc;
+}
+.hero-sphere-btn-primary:hover {
+  transform: translateY(-2px);
+  background: #fff;
+}
+.hero-sphere-btn-ghost {
+  background: rgba(160, 184, 208, 0.1);
+  color: #e7eef5;
+  border: 1px solid rgba(176, 196, 216, 0.28);
+}
+.hero-sphere-btn-ghost:hover {
+  transform: translateY(-2px);
+  border-color: rgba(176, 196, 216, 0.5);
+  background: rgba(160, 184, 208, 0.16);
+}
+.hero-sphere-btn-primary .cta-arrow,
+.hero-sphere-btn-ghost .cta-arrow {
+  transition: transform 0.25s ease;
+}
+.hero-sphere-btn-primary:hover .cta-arrow,
+.hero-sphere-btn-ghost:hover .cta-arrow {
+  transform: translateX(3px);
+}
+.hero-sphere-btn-primary:focus-visible,
+.hero-sphere-btn-ghost:focus-visible {
+  outline: 2px solid #5fc6dc;
+  outline-offset: 2px;
+}
+/* once the copy has faded out under the scrub (JS adds .hero-sphere--past),
+   take it out of the tab order so keyboard users don't focus invisible CTAs */
+.hero-sphere--past .hero-sphere-inner {
+  visibility: hidden;
+}
+/* stacked copy on narrow / no-pin layouts */
+@media (max-width: 860px) {
+  .hero-sphere-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 1.75rem;
+    opacity: 1; /* no scrub fade without the pin */
+    transform: none;
+  }
+  .hero-sphere-aside {
+    align-self: flex-start;
+    max-width: 540px;
+  }
+}
