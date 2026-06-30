@@ -85,6 +85,16 @@
     }
   }
 
+  // render() rewrites a CSS custom prop on all 7 cards and toggles is-front. While the
+  // ring is idle but still on screen the eased angle stops changing, so those writes
+  // repeat identically every frame. Skip them unless the rendered value changes.
+  function renderIfChanged(deg) {
+    const k = deg.toFixed(2);
+    if (k === lastRenderKey) return;
+    lastRenderKey = k;
+    render(deg);
+  }
+
   const scrollPos = () =>
     window.lenis && typeof window.lenis.scroll === "number"
       ? window.lenis.scroll
@@ -97,6 +107,9 @@
   let lastScroll = NaN;
   let idleFrames = 0;
   let lastNow = performance.now();
+  // throttle the geometry re-read (see frame()); cache the last rendered ring key
+  let measureTick = 0;
+  let lastRenderKey = "";
   function measure() {
     const vh = window.innerHeight;
     const wrapH = wrap.offsetHeight;
@@ -126,14 +139,17 @@
     return t;
   }
   function frame() {
-    // Re-measure every frame the ring is live. The Core Competencies section
-    // above us mounts an interactive panel after load and collapses by a few
-    // hundred px once it settles, moving our document position with no resize
-    // event - a once-cached anchor goes stale and pins the cards too high, off
-    // the top. measure() is feedback-safe (it subtracts the current transform),
-    // so re-reading geometry each frame self-corrects without oscillating; the
-    // cost is one layout read per frame, and only while the ring is on screen.
-    measure();
+    // The anchor is scroll-invariant (measure() subtracts the current transform), so it
+    // only changes when layout genuinely shifts - it does NOT need re-reading every
+    // frame. getBoundingClientRect()/offsetHeight here force a synchronous layout flush
+    // that is the loop's entire per-frame cost (~7ms on this 3D-heavy page) and that
+    // amplifies any other layout work sharing the frame. Re-read at ~15Hz instead of
+    // 60Hz (self-corrects the Core Competencies collapse within ~4 frames - the section
+    // above mounts a panel that collapses the page a few hundred px ~0.5s after load
+    // with no resize event), plus immediately whenever the anchor is invalidated by the
+    // listeners below (resize, the laptop "bma:os-emit" collapse, or the web-font swap).
+    measureTick = (measureTick + 1) & 3;
+    if (anchor === null || measureTick === 0) measure();
     const now = performance.now();
     let dt = (now - lastNow) / 1000;
     lastNow = now;
@@ -143,7 +159,7 @@
       curT = 0;
       wrap.style.transform = "";
       angle = 0;
-      render(0);
+      renderIfChanged(0);
       return;
     }
     const s = scrollPos();
@@ -162,7 +178,7 @@
 
     // inertia: ease the rotation toward the target, frame-rate independent
     angle += (target - angle) * (1 - Math.exp(-OMEGA * dt));
-    render(angle);
+    renderIfChanged(angle);
   }
 
   let rafId = 0;
@@ -182,7 +198,7 @@
     cancelAnimationFrame(rafId);
     const end = section.getBoundingClientRect().top < 0 ? -TURN : 0;
     angle = end;
-    render(end);
+    renderIfChanged(end);
   }
 
   if ("IntersectionObserver" in window) {
@@ -198,6 +214,18 @@
   window.addEventListener("resize", () => {
     anchor = null;
   });
+  // Re-read geometry once when the page actually shifts under us, rather than polling
+  // it every frame: the Core Competencies laptop powers on and collapses the page a
+  // few hundred px ~0.5s after load with no resize event, and the web-font swap reflows
+  // too. Each just invalidates the anchor; the next frame re-measures once.
+  document.addEventListener("bma:os-emit", () => {
+    anchor = null;
+  });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      anchor = null;
+    });
+  }
 
   // Keep the pin glued to Lenis's scroll. Lenis emits "scroll" the instant it
   // updates its smoothed value, so applying the translate here (in addition to

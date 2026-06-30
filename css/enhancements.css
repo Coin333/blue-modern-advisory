@@ -123,7 +123,21 @@ html.bma-leaving #root {
   background: linear-gradient(180deg, #fffaf3 0%, #f8fbfc 100%);
 }
 .delivery-section {
-  background: linear-gradient(180deg, #f6fafc 0%, #ffffff 100%);
+  /* Short blue-to-white wash easing out of the dark carousel above. The band starts
+     at the ring section's exact bottom colour (#07121d) so the seam is invisible,
+     then clears to white FAST (~65px in) so the dark does not linger as a separate
+     slab trailing the carousel on the way out. Kept deliberately short: the earlier
+     260px band read as the dark "lagging" behind the carousel exit. Banded across the
+     top only (no-repeat); the rest of the section is white. */
+  background:
+    linear-gradient(
+        to bottom,
+        #07121d 0%,
+        rgba(31, 78, 115, 0.3) 30%,
+        rgba(255, 255, 255, 0) 64%
+      )
+      top / 100% clamp(72px, 7vw, 104px) no-repeat,
+    #ffffff;
 }
 
 /* ---- Hero -> body luminance bridge ---------------------------------------
@@ -1320,13 +1334,15 @@ html.bma-leaving #root {
 .cc-os {
   position: relative;
   width: 100%;
-  height: clamp(520px, 84vh, 940px);
-  /* faint plinth so the laptop reads as resting on a surface */
-  background: radial-gradient(
-    50% 38% at 50% 86%,
-    rgba(31, 78, 115, 0.1),
-    rgba(31, 78, 115, 0) 70%
-  );
+  height: clamp(560px, 90vh, 1040px);
+  /* the laptop's lower body cuts off into the next section's navy: the bottom
+     of this area fades to #081420 (the gtm-ring section's top color) so there
+     is no white gap or stray plinth - it reads as one continuous transition */
+  background: linear-gradient(180deg, transparent 64%, #081420 100%);
+}
+/* let the laptop butt straight against the navy "CAPABILITIES" section below */
+.cc-section.section-pad {
+  padding-bottom: 0;
 }
 .cc-os-canvas,
 .cc-os-css {
@@ -1336,6 +1352,10 @@ html.bma-leaving #root {
   height: 100%;
   opacity: 0;
   transition: opacity 0.8s ease;
+  /* dissolve the laptop AND the screen layer together into the navy carousel
+     section below (both fade to transparent over a short bottom band) */
+  -webkit-mask-image: linear-gradient(180deg, #000 84%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 84%, transparent 100%);
 }
 .cc-os-canvas {
   display: block;
@@ -1456,7 +1476,7 @@ html.bma-leaving #root {
   }
 }
 
-/* the live pipeline, mounted onto the screen */
+/* the live pipeline, mounted onto the screen (fallback path only now) */
 .cc-screen-app {
   position: absolute;
   inset: 0;
@@ -1469,6 +1489,440 @@ html.bma-leaving #root {
 .cc-screen-app .cc-flow {
   width: 100%;
   margin: 0;
+}
+
+/* ---- "BMA OS": autonomous activity feed + pipeline on the laptop screen ----
+   Refined navy operating-system UI (brand blues, editorial serif headings, no
+   neon/mono cliche). The whole thing animates itself via the driver in
+   cc-laptop.js. Sized large so it stays legible at the screen's 3D scale. */
+.osui {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(31, 78, 115, 0.35),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #0c2032 0%, #081626 60%, #06101b 100%);
+  color: #dbe8f5;
+  font-family: var(--font-body, Georgia, serif);
+  overflow: hidden;
+}
+.osui-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 34px;
+  border-bottom: 1px solid rgba(154, 179, 196, 0.16);
+}
+.osui-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  color: #f0f6fc;
+}
+.osui-brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 4px;
+  object-fit: contain;
+}
+.osui-metric {
+  margin-left: auto;
+  font-size: 18px;
+  color: #9ab3c4;
+  letter-spacing: 0.04em;
+}
+.osui-metric b {
+  color: #cfe3f5;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.osui-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7fd6a6;
+}
+.osui-live i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #5fd29a;
+  box-shadow: 0 0 0 0 rgba(95, 210, 154, 0.6);
+  animation: osui-pulse 1.8s ease-out infinite;
+}
+@keyframes osui-pulse {
+  to {
+    box-shadow: 0 0 0 9px rgba(95, 210, 154, 0);
+  }
+}
+.osui-main {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 30px;
+  padding: 28px 34px 34px;
+  min-height: 0;
+}
+
+/* activity feed (left) */
+.osui-feed {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(154, 179, 196, 0.14);
+  border-radius: 16px;
+  padding: 22px 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.osui-log {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.osui-line {
+  font-size: 19px;
+  line-height: 1.35;
+  color: #aec4d8;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: osui-in 0.4s ease forwards;
+  font-variant-numeric: tabular-nums;
+}
+.osui-line i {
+  color: #4f93c7;
+  font-style: normal;
+  font-weight: 700;
+  margin-right: 8px;
+}
+.osui-line b {
+  color: #eaf3fb;
+  font-weight: 600;
+}
+.osui-line em {
+  color: #8aa6bb;
+  font-style: normal;
+}
+.osui-line.ok,
+.osui-line .ok {
+  color: #7fd6a6;
+  font-weight: 700;
+}
+.osui-line:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 19px;
+  margin-left: 6px;
+  vertical-align: -3px;
+  background: #4f93c7;
+  animation: osui-blink 1s steps(1) infinite;
+}
+@keyframes osui-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes osui-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* pipeline + record (right) */
+.osui-work {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  justify-content: center;
+}
+.osui-rail {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 4px 0;
+}
+.osui-wire {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  top: 30px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(154, 179, 196, 0.3) 0 6px,
+    transparent 6px 12px
+  );
+}
+.osui-spark {
+  position: absolute;
+  left: 26px;
+  top: 30px;
+  width: 12px;
+  height: 12px;
+  margin: -5px 0 0 -6px;
+  border-radius: 50%;
+  background: #cfe3f5;
+  box-shadow: 0 0 14px 3px rgba(207, 227, 245, 0.7);
+  left: calc(26px + var(--p, 0) * (100% - 52px));
+  transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.osui-node {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  width: 60px;
+}
+.osui-chip {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #0c2233;
+  border: 2px solid rgba(154, 179, 196, 0.4);
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.osui-chip img {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  filter: saturate(0.9);
+}
+.osui-node.is-done .osui-chip {
+  border-color: #4f93c7;
+}
+.osui-node.is-lit .osui-chip {
+  border-color: #cfe3f5;
+  transform: translateY(-4px) scale(1.08);
+  box-shadow:
+    0 0 0 4px rgba(31, 78, 115, 0.4),
+    0 0 22px 4px rgba(79, 147, 199, 0.55);
+}
+.osui-name {
+  font-size: 14px;
+  color: #8aa6bb;
+  letter-spacing: 0.03em;
+}
+.osui-node.is-lit .osui-name {
+  color: #eaf3fb;
+}
+.osui-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  margin: -2px 0 0 -2px;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform 0.6s cubic-bezier(0.34, 1.2, 0.5, 1),
+    opacity 0.3s ease;
+  background: no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f0f6fc' stroke='%230c2233' stroke-width='1.5'%3E%3Cpath d='M5 3l14 8-6 1.6L9.5 19z'/%3E%3C/svg%3E");
+}
+.osui-cursor.is-on {
+  opacity: 1;
+}
+.osui-rec {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(154, 179, 196, 0.16);
+  border-radius: 16px;
+  padding: 18px 20px;
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+.osui-rec.is-win {
+  border-color: rgba(127, 214, 166, 0.5);
+  box-shadow: 0 0 30px -8px rgba(127, 214, 166, 0.35);
+}
+.osui-rec-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.osui-rec-name {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  color: #f0f6fc;
+}
+.osui-rec-tag {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8aa6bb;
+}
+.osui-rec-tag.is-win {
+  color: #7fd6a6;
+}
+.osui-rec-fields {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 96px;
+}
+.osui-rec-fields li {
+  position: relative;
+  padding-left: 20px;
+  font-size: 16px;
+  color: #aec4d8;
+  opacity: 0;
+  animation: osui-in 0.4s ease forwards;
+}
+.osui-rec-fields li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #4f93c7;
+  font-size: 13px;
+}
+.osui-rec-score {
+  font-size: 16px;
+  color: #8aa6bb;
+  letter-spacing: 0.04em;
+}
+.osui-rec-score b {
+  font-size: 24px;
+  color: #cfe3f5;
+  font-variant-numeric: tabular-nums;
+}
+/* hint line above the pipeline icons */
+.osui-hint {
+  margin: 0 0 2px;
+  text-align: center;
+  font-size: 16px;
+  color: #8aa6bb;
+  letter-spacing: 0.02em;
+}
+/* tool detail as a centered modal on the screen (X or click-outside closes) */
+.osui-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: rgba(4, 12, 20, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.osui-modal.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.osui-card {
+  position: relative;
+  width: min(440px, 80%);
+  background: linear-gradient(180deg, #0e2336, #0b1a29);
+  border: 1px solid rgba(154, 179, 196, 0.28);
+  border-radius: 18px;
+  padding: 30px 32px 28px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+  transform: translateY(10px) scale(0.97);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.osui-modal.is-open .osui-card {
+  transform: none;
+}
+.osui-x {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #aec4d8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+.osui-x:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f0f6fc;
+}
+.osui-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.osui-card-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.osui-card-logo img {
+  width: 66%;
+  height: 66%;
+  object-fit: contain;
+}
+.osui-card b {
+  font-family: Georgia, serif;
+  font-size: 26px;
+  color: #f0f6fc;
+}
+.osui-card p {
+  margin: 0 0 16px;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #c2d4e4;
+}
+.osui-card a {
+  font-size: 16px;
+  font-weight: 600;
+  color: #6fb0e0;
+  text-decoration: none;
+}
+.osui-card a:hover {
+  color: #9bcdf0;
 }
 
 /* Skip the WebGL laptop on weak/static contexts: the pipeline is never moved

@@ -40,12 +40,22 @@
 
   // stagger index = position among tracked siblings under the same parent
   const seen = new Map();
+  // Cache each block's resting document-top (a layout position, unaffected by
+  // the transform we apply) so the per-frame scroll work is pure arithmetic.
+  // Previously apply() called getBoundingClientRect() on every tracked block on
+  // every scroll frame, forcing a full reflow each frame - the main scroll-jank
+  // source on long pages. offsetTop walks the layout tree once instead.
+  function docTop(el) {
+    let y = 0;
+    for (let n = el; n; n = n.offsetParent) y += n.offsetTop;
+    return y;
+  }
   const records = items.map((el) => {
     const p = el.parentElement;
     const i = seen.get(p) || 0;
     seen.set(p, i + 1);
     el.style.transition = "none"; // scrubbed: we drive transform every frame
-    return { el, stagger: i };
+    return { el, stagger: i, top: docTop(el) };
   });
 
   const START = 0.96; // begin revealing when the block's top is 96% down the viewport
@@ -62,16 +72,15 @@
     const vh = window.innerHeight;
     const top = START * vh;
     const denom = (START - END) * vh || 1;
-    // read all positions first, then write - keeps layout from thrashing
-    const ps = records.map((r) => {
-      const rect = r.el.getBoundingClientRect();
-      return clamp((top - rect.top - r.stagger * STAGGER) / denom, 0, 1);
-    });
+    const sy = scrollPos();
     for (let i = 0; i < records.length; i++) {
-      const p = ps[i];
-      const el = records[i].el;
-      el.style.opacity = p.toFixed(3);
-      el.style.transform =
+      const r = records[i];
+      // viewport-relative top from the cached layout top + scroll: no layout
+      // read in the hot path, so scrolling never triggers a reflow here
+      const rectTop = r.top - sy;
+      const p = clamp((top - rectTop - r.stagger * STAGGER) / denom, 0, 1);
+      r.el.style.opacity = p.toFixed(3);
+      r.el.style.transform =
         "translate3d(0," +
         ((1 - p) * DIST).toFixed(1) +
         "px,0) scale(" +
@@ -81,7 +90,7 @@
   }
 
   // rAF loop reads the (Lenis-smoothed) scroll each frame and only does the
-  // layout work when it actually moved, so it's free while the page is idle
+  // work when it actually moved, so it's free while the page is idle
   let last = NaN;
   function loop() {
     const y = scrollPos();
@@ -94,7 +103,12 @@
 
   apply(); // prime synchronously so on-screen blocks never flash hidden
   requestAnimationFrame(loop);
-  window.addEventListener("resize", () => {
+  // geometry shifts on resize or as lazy below-the-fold images finish loading;
+  // re-cache the resting tops then (a one-off reflow, never in the scroll path)
+  function refresh() {
+    for (const r of records) r.top = docTop(r.el);
     last = NaN;
-  });
+  }
+  window.addEventListener("resize", refresh);
+  window.addEventListener("load", refresh);
 })();

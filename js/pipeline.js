@@ -1,9 +1,11 @@
 /* "What We Build" network pipeline - scroll-scrubbed.
    The section pins (held in place with a transform, since body has overflow-x
    hidden which would break position:sticky) while you scroll through a tall
-   track, and the wire fills dot-to-dot in proportion to scroll position: it
-   draws on the way down and un-draws on the way up. Driven by window scroll,
-   which tracks Lenis's smoothed scroll position. Respects reduced-motion. */
+   track, and the wire fills dot-to-dot in proportion to scroll position. It
+   fills as you scroll down and as the idle auto-build advances, and never
+   retreats while the section is on screen, so the auto-advance carries into the
+   scroll (no jump-back); it re-arms once the section leaves view. Driven by
+   window scroll, which tracks Lenis's smoothed position. Respects reduced-motion. */
 (function () {
   const section = document.querySelector("#what-bma-builds");
   const pipe = section && section.querySelector("[data-pipe]");
@@ -162,13 +164,19 @@
     const moving = Math.abs(s - lastScrollV) > 0.5;
     lastScrollV = s;
     if (moving) {
-      autoP = scrollP; // follow the scroll (keeps auto and scroll in sync)
       idleMs = 0;
     } else {
       idleMs += dt * 1000;
       if (idleMs > IDLE_DELAY) autoP = Math.min(1, autoP + dt / AUTO_SECS);
     }
-    const target = Math.max(scrollP, autoP);
+    // The fill tracks the furthest point reached - whichever of the scroll
+    // position or the idle auto-build is further along - and never retreats
+    // while the section is on screen. So when the pipeline has auto-advanced and
+    // you start scrolling again, it CARRIES ON from where it built to, instead of
+    // snapping back to the raw scroll position (that backward ease was the
+    // jump-back). It re-arms from 0 once the section fully leaves view (stop()).
+    autoP = Math.max(autoP, scrollP);
+    const target = autoP;
     curP += (target - curP) * (1 - Math.exp(-EASE_OMEGA * dt)); // smooth follow
     render(curP);
   }

@@ -16148,27 +16148,59 @@ h6,
 }
 .hero-og-bg {
   background:
+    /* soft steel light source, upper right */
     radial-gradient(
-      circle at 80% 15%,
-      rgba(120, 158, 179, 0.22),
-      transparent 34%
+      48% 42% at 84% 6%,
+      rgba(154, 179, 196, 0.18),
+      transparent 62%
     ),
-    linear-gradient(145deg, #102c3e, #17384e 54%, #214a62);
+    /* one cyan signal entering from the left — pipeline direction */
+    linear-gradient(
+        108deg,
+        rgba(95, 198, 220, 0.1) 0%,
+        rgba(95, 198, 220, 0) 30%
+      ),
+    /* depth vignette: darkest at center-bottom so the headline + CTAs read */
+    radial-gradient(
+        130% 96% at 50% 122%,
+        rgba(4, 12, 22, 0.6) 0%,
+        rgba(4, 12, 22, 0) 56%
+      ),
+    /* base navy field */
+    linear-gradient(150deg, #0a1c2b 0%, #112e41 52%, #163a52 100%);
 }
+/* engineering lattice — concentrated near the light source, dissolving into
+   the dark center-bottom so it reads as depth rather than a flat grid */
 .hero-og-bg:after {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 72px 72px;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.7),
-    transparent 82%
+    linear-gradient(rgba(154, 199, 220, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154, 199, 220, 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  -webkit-mask-image: radial-gradient(
+    120% 100% at 82% 0%,
+    #000 0%,
+    rgba(0, 0, 0, 0.35) 42%,
+    transparent 78%
   );
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 82%);
+  mask-image: radial-gradient(
+    120% 100% at 82% 0%,
+    #000 0%,
+    rgba(0, 0, 0, 0.35) 42%,
+    transparent 78%
+  );
+}
+/* fine grain — kills gradient banding across the navy field */
+.hero-og-bg:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 .hero-og-inner {
   max-width: 930px;
@@ -16679,6 +16711,8 @@ h6,
   }
 }
 .delivery-section {
+  /* Base surface. The blue-to-white "coming out of the carousel" wash is set on
+     this same selector in enhancements.css, which loads later and wins. */
   background: var(--surface);
 }
 .delivery-section .section-heading {
@@ -19741,16 +19775,25 @@ h6,
 /* ===== Hero: photo removed, brand-navy gradient backing for the network field ===== */
 .hero-og-bg {
   background:
+    /* depth vignette: darkest at center-bottom so the headline + CTAs read */
     radial-gradient(
-      circle at 80% 12%,
-      rgba(217, 138, 74, 0.16),
-      transparent 42%
+      135% 95% at 50% 120%,
+      rgba(3, 10, 19, 0.62),
+      transparent 58%
     ),
+    /* steel light source, upper right */
     radial-gradient(
-      circle at 10% 90%,
-      rgba(111, 143, 166, 0.18),
-      transparent 46%
-    ),
+        50% 44% at 84% 8%,
+        rgba(154, 179, 196, 0.18),
+        transparent 60%
+      ),
+    /* a single warm signal, lower left — the one brand accent */
+    radial-gradient(
+        42% 40% at 12% 88%,
+        rgba(217, 138, 74, 0.1),
+        transparent 56%
+      ),
+    /* base navy field */
     linear-gradient(155deg, #07131f 0%, #0b2134 52%, #0f2c42 100%) !important;
 }
 
@@ -20048,12 +20091,15 @@ h6,
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: 14%;
+  /* vertically centred between the nav bar and the hero bottom; the dot is
+     dropped below it via window.__bmaHero.focusShiftY so the card sits above */
+  top: 50%;
   width: min(620px, calc(100% - 64px));
   padding: 22px 26px;
   /* gentle rightward nudge: ramps in on wide screens, 0 before it gets tight */
   --tour-dx: clamp(0px, 50vw - 360px, 110px);
-  transform: translate(calc(-50% + var(--tour-dx)), 14px) scale(0.98);
+  transform: translate(calc(-50% + var(--tour-dx)), calc(-50% + 14px))
+    scale(0.98);
   background: linear-gradient(
     158deg,
     rgba(14, 28, 48, 0.94),
@@ -20077,7 +20123,7 @@ h6,
 }
 .bma-tour-pop.is-on {
   opacity: 1;
-  transform: translate(calc(-50% + var(--tour-dx)), 0) scale(1);
+  transform: translate(calc(-50% + var(--tour-dx)), -50%) scale(1);
   pointer-events: auto;
 }
 .bma-tour-pop::after {
@@ -20171,7 +20217,7 @@ h6,
 }
 @media (max-width: 720px) {
   .bma-tour-pop {
-    top: 12%;
+    top: 50%;
   }
   .bma-tour-pop__rows {
     grid-template-columns: 1fr;
@@ -20970,7 +21016,11 @@ a.trusted-marquee-item {
 .bma-stack-text {
   font-size: 1rem;
   line-height: 1.72;
-  color: var(--muted);
+  /* Deeper than --muted so body copy clears WCAG AA on the bluest card surface.
+     With the white->blue ramp, card 4 (#c5dded) gives only 4.3:1 against --muted;
+     this slate lands ~4.9:1. The stack surfaces are always light (theme-independent),
+     so a fixed slate is safe here. */
+  color: #4a5c6e;
   margin: 0;
 }
 .bma-stack-meta {
@@ -21383,7 +21433,7 @@ a.trusted-marquee-item {
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.22em;
-  color: #d98a4a;
+  color: #5b9bc9;
 }
 .gtm-card-title {
   margin: 8px 0 10px;
@@ -21458,7 +21508,7 @@ a.trusted-marquee-item {
 #gtm-systems.is-scrub .gtm-card.is-front {
   box-shadow:
     0 50px 90px -40px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(217, 138, 74, 0.28);
+    0 0 0 1px rgba(91, 155, 201, 0.28);
 }
 
 /* freeze the visuals + flatten the ring for reduced-motion */
@@ -21521,11 +21571,11 @@ a.trusted-marquee-item {
   stroke-dasharray: 3 6;
 }
 .gtm-viz--strategy .strategy-lead {
-  fill: #d98a4a;
+  fill: #5b9bc9;
 }
 .gtm-viz--strategy .strategy-lead-ring {
   fill: none;
-  stroke: #d98a4a;
+  stroke: #5b9bc9;
   stroke-width: 1.4;
 }
 .gtm-viz--strategy .strategy-arrow {
@@ -22364,7 +22414,7 @@ a.trusted-marquee-item {
   animation-delay: 1.1s;
 }
 .gtm-viz--outbound .outbound-c4 .outbound-flow {
-  stroke: #d98a4a;
+  stroke: #5b9bc9;
   animation-delay: 1.65s;
 }
 
@@ -22410,7 +22460,7 @@ a.trusted-marquee-item {
 .gtm-viz--outbound .outbound-c4 .outbound-bead {
   offset-path: path("M 92 100 C 150 100, 222 162, 300 162");
   animation-delay: 1.65s;
-  fill: #d98a4a;
+  fill: #5b9bc9;
 }
 
 @keyframes outbound-travel {
@@ -22452,7 +22502,7 @@ a.trusted-marquee-item {
   animation: outbound-arrive-core 7s ease-in-out infinite;
 }
 .gtm-viz--outbound .outbound-t4 .outbound-target-core {
-  fill: #d98a4a;
+  fill: #5b9bc9;
 }
 
 .gtm-viz--outbound .outbound-tflash {
@@ -22468,7 +22518,7 @@ a.trusted-marquee-item {
   stroke: #d6e0e8;
 }
 .gtm-viz--outbound .outbound-t4 .outbound-tflash {
-  stroke: #d98a4a;
+  stroke: #5b9bc9;
 }
 
 .gtm-viz--outbound .outbound-t1 .outbound-tflash,
@@ -23502,11 +23552,37 @@ a.trusted-marquee-item {
     color-mix(in srgb, var(--card-accent, #1f4e73) 22%, transparent);
 }
 .bma-stack-tabnum {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.98rem;
-  letter-spacing: 0.01em;
-  color: var(--card-accent, var(--blue));
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* Card-position dots replacing the old "01/02..." number: a four-step indicator.
+   Steps already passed are medium and solid, the current card's step is the
+   largest, and steps still ahead are small and faint - so card N reads as
+   "step N of 4" at a glance. Sizes/colours track the card's own accent. */
+.bma-stack-tabnum i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(
+    in srgb,
+    var(--card-accent, var(--blue)) 22%,
+    transparent
+  );
+}
+.bma-stack-tabnum i.done {
+  width: 7px;
+  height: 7px;
+  background: color-mix(
+    in srgb,
+    var(--card-accent, var(--blue)) 58%,
+    transparent
+  );
+}
+.bma-stack-tabnum i.cur {
+  width: 11px;
+  height: 11px;
+  background: var(--card-accent, var(--blue));
 }
 .bma-stack-tabname {
   font-family: var(--font-body);
@@ -25895,6 +25971,7 @@ a.trusted-marquee-item {
   width: max-content;
 }
 .uc-tab {
+  position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -25907,7 +25984,7 @@ a.trusted-marquee-item {
   background: #eef1f5;
   border: 1px solid transparent;
   border-radius: 999px;
-  padding: 10px 20px;
+  padding: 10px 20px 12px;
   cursor: pointer;
   scroll-snap-align: center;
   transition:
@@ -25929,6 +26006,44 @@ a.trusted-marquee-item {
   .uc-tab:hover:not(.is-active) {
     background: #e3e8ee;
     color: var(--ink);
+  }
+}
+
+/* ---- auto-advance progress bar: a thin rail seated in the active pill's
+   bottom padding. ::before is the dim track, ::after the white fill scaled by
+   --uc-progress (0..1, driven each frame from app.js). The whole bar fades in
+   only while the cycle is actually advancing (.uc-running, set by app.js) and
+   fades back out the moment it pauses (hover, focus, off-screen). ------------ */
+.uc-tab::before,
+.uc-tab::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 5px;
+  height: 2.5px;
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.uc-tab::before {
+  background: rgba(255, 255, 255, 0.26);
+}
+.uc-tab::after {
+  background: #fff;
+  transform-origin: left center;
+  transform: scaleX(var(--uc-progress, 0));
+}
+.uc-showcase.uc-running .uc-tab.is-active::before,
+.uc-showcase.uc-running .uc-tab.is-active::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* no auto-advance under reduced motion, so the bar has nothing to show */
+  .uc-tab::before,
+  .uc-tab::after {
+    display: none;
   }
 }
 

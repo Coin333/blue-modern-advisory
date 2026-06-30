@@ -64,6 +64,230 @@ if (host && flow) {
   }
 }
 
+/* The autonomous "BMA OS" shown on the laptop screen: an activity feed types
+   each step, the pipeline nodes light in sync, a cursor glides to the active
+   tool, and a record resolves to qualified + fit score - looping over accounts.
+   Returns { el, start } - start() kicks the loop once the boot screen clears. */
+function buildOSUI() {
+  const TOOLS = [
+    {
+      k: "Clay",
+      act: "enrich",
+      out: "Series B · B2B SaaS",
+      img: "assets/clay_logo_no_background.png",
+      href: "https://clay.com",
+      desc: "Pulls firmographics, technographics, and headcount-change signals from 12+ providers in one run.",
+    },
+    {
+      k: "Exa",
+      act: "research",
+      out: "hiring 9 GTM roles",
+      img: "assets/exa.jpg",
+      href: "https://exa.ai",
+      desc: "Neural web search that surfaces hiring, funding, and intent signals a keyword search would miss.",
+    },
+    {
+      k: "Perplexity",
+      act: "verify",
+      out: "VP RevOps confirmed",
+      img: "assets/perplexity.jpg",
+      href: "https://perplexity.ai",
+      desc: "Verifies and cites the key facts so every field in the record stays defensible.",
+    },
+    {
+      k: "Claude",
+      act: "reason",
+      out: "angle drafted",
+      img: "assets/claude.png",
+      href: "https://claude.ai/new",
+      desc: "Reasons over the full account context to score fit and draft the angle.",
+    },
+    {
+      k: "Smartlead",
+      act: "sequence",
+      out: "sequence queued",
+      img: "assets/smartlead.jpg",
+      href: "https://www.smartlead.ai",
+      desc: "Sequences multi-step outreach and protects deliverability across inboxes.",
+    },
+    {
+      k: "JustCall",
+      act: "connect",
+      out: "warm — dialing",
+      img: "assets/justcall.jpg",
+      href: "https://justcall.io",
+      desc: "Adds the human touch (dials and SMS) the moment an account turns warm.",
+    },
+  ];
+  const ACCOUNTS = [
+    "acme.com",
+    "globex.io",
+    "initech.co",
+    "stark.ai",
+    "northwind.co",
+  ];
+
+  const el = document.createElement("div");
+  el.className = "osui";
+  el.innerHTML =
+    '<div class="osui-bar">' +
+    '<span class="osui-brand"><img src="assets/bma.png" alt="">BMA OS</span>' +
+    '<span class="osui-metric">pipeline <b class="osui-amt">$1.6M</b></span>' +
+    '<span class="osui-live"><i></i>live</span>' +
+    "</div>" +
+    '<div class="osui-main">' +
+    '<div class="osui-feed"><div class="osui-log"></div></div>' +
+    '<div class="osui-work">' +
+    '<p class="osui-hint">Click any tool to see how we use it</p>' +
+    '<div class="osui-rail">' +
+    TOOLS.map(
+      (t, i) =>
+        '<button class="osui-node" data-i="' +
+        i +
+        '" type="button">' +
+        '<span class="osui-chip"><img src="' +
+        t.img +
+        '" alt=""></span>' +
+        '<span class="osui-name">' +
+        t.k +
+        "</span></button>",
+    ).join("") +
+    '<span class="osui-wire"></span><span class="osui-spark"></span>' +
+    '<span class="osui-cursor"></span>' +
+    "</div>" +
+    '<div class="osui-rec">' +
+    '<div class="osui-rec-top"><span class="osui-rec-name">—</span>' +
+    '<span class="osui-rec-tag">unqualified</span></div>' +
+    '<ul class="osui-rec-fields"></ul>' +
+    '<div class="osui-rec-score">fit <b>—</b></div>' +
+    "</div></div></div>" +
+    '<div class="osui-modal"><div class="osui-card">' +
+    '<button class="osui-x" type="button" aria-label="Close">×</button>' +
+    '<div class="osui-card-head"><span class="osui-card-logo"><img src="" alt=""></span><b></b></div>' +
+    "<p></p>" +
+    '<a target="_blank" rel="noreferrer noopener"></a>' +
+    "</div></div>";
+
+  const $ = (s) => el.querySelector(s);
+  const log = $(".osui-log");
+  const nodes = Array.prototype.slice.call(el.querySelectorAll(".osui-node"));
+  const cursor = $(".osui-cursor");
+  const spark = $(".osui-spark");
+  const amt = $(".osui-amt");
+  const rec = $(".osui-rec");
+  const modal = $(".osui-modal");
+  const card = $(".osui-card");
+
+  function addLine(html, cls) {
+    const d = document.createElement("div");
+    d.className = "osui-line" + (cls ? " " + cls : "");
+    d.innerHTML = html;
+    log.appendChild(d);
+    while (log.children.length > 7) log.removeChild(log.firstChild);
+  }
+  function moveCursor(i) {
+    const n = nodes[i];
+    const chip = n.querySelector(".osui-chip");
+    cursor.style.transform =
+      "translate(" +
+      (n.offsetLeft + n.offsetWidth / 2 - 6) +
+      "px," +
+      (n.offsetTop + chip.offsetHeight / 2 - 2) +
+      "px)";
+  }
+
+  let ai = 0;
+  let step = 0;
+  let money = 1.6;
+  function tick() {
+    const acct = ACCOUNTS[ai];
+    if (step === 0) {
+      log.innerHTML = "";
+      addLine("<i>›</i> scanning <b>" + acct + "</b> …");
+      nodes.forEach((n) => n.classList.remove("is-lit", "is-done"));
+      $(".osui-rec-name").textContent = acct;
+      const tag = $(".osui-rec-tag");
+      tag.textContent = "unqualified";
+      tag.className = "osui-rec-tag";
+      $(".osui-rec-fields").innerHTML = "";
+      $(".osui-rec-score b").textContent = "—";
+      rec.classList.remove("is-win");
+      cursor.classList.add("is-on");
+    } else if (step <= TOOLS.length) {
+      const i = step - 1;
+      const t = TOOLS[i];
+      nodes.forEach((n, j) => n.classList.toggle("is-lit", j === i));
+      if (i > 0) nodes[i - 1].classList.add("is-done");
+      moveCursor(i);
+      spark.style.setProperty("--p", i / (TOOLS.length - 1));
+      addLine(
+        "<i>›</i> <b>" + t.k + "</b> · " + t.act + " <em>→ " + t.out + "</em>",
+      );
+      const li = document.createElement("li");
+      li.textContent = t.out;
+      $(".osui-rec-fields").appendChild(li);
+      money += 0.14 + i * 0.02;
+      amt.textContent = "$" + money.toFixed(1) + "M";
+    } else if (step === TOOLS.length + 1) {
+      nodes[TOOLS.length - 1].classList.add("is-done");
+      nodes.forEach((n) => n.classList.remove("is-lit"));
+      const score = 80 + ((ai * 5) % 16);
+      addLine(
+        '<b class="ok">✓ ' + acct + "</b> → qualified · fit " + score,
+        "ok",
+      );
+      const tag = $(".osui-rec-tag");
+      tag.textContent = "qualified";
+      tag.className = "osui-rec-tag is-win";
+      $(".osui-rec-score b").textContent = score;
+      rec.classList.add("is-win");
+      cursor.classList.remove("is-on");
+    } else if (step >= TOOLS.length + 4) {
+      ai = (ai + 1) % ACCOUNTS.length;
+      step = -1; // becomes 0 below → next account
+    }
+    step++;
+  }
+
+  function openModal(i) {
+    const t = TOOLS[i];
+    card.querySelector(".osui-card-logo img").src = t.img;
+    card.querySelector("b").textContent = t.k;
+    card.querySelector("p").textContent = t.desc;
+    const a = card.querySelector("a");
+    a.href = t.href;
+    a.textContent = "Visit " + t.k + " →";
+    modal.classList.add("is-open"); // front-and-center; loop keeps running behind
+  }
+  function closeModal() {
+    modal.classList.remove("is-open");
+  }
+  nodes.forEach((n, i) => {
+    n.addEventListener("click", (e) => {
+      e.preventDefault();
+      openModal(i);
+    });
+  });
+  // X button, or click on the backdrop (outside the card), dismisses it
+  card.querySelector(".osui-x").addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal();
+  });
+
+  let timer = null;
+  return {
+    el,
+    start() {
+      if (timer) return;
+      tick();
+      timer = setInterval(tick, 850);
+    },
+  };
+}
+
 async function boot() {
   window.__bmaEmbed = true; // cc-hero: skip the flat cluster intro, just reveal
 
@@ -72,7 +296,7 @@ async function boot() {
   const def = (k, v) => (CFG[k] = CFG[k] ?? v);
   // zoom: end size of the push-in. Bigger = the screen reads more legibly. The
   // keyboard runs off the bottom at the end; that's intended (focus on the app).
-  def("fill", window.innerWidth < 700 ? 1.5 : 2.1);
+  def("fill", window.innerWidth < 700 ? 1.8 : 2.8);
   def("fov", 32);
   def("baseYaw", -0.18); // resting turn of the laptop (rad)
   def("basePitch", -0.02);
@@ -145,11 +369,11 @@ async function boot() {
     '<div class="cc-screen-sub">GTM OPERATING SYSTEM</div>' +
     '<div class="cc-screen-bar"><span></span></div>' +
     "</div>";
-  const flowWrap = document.createElement("div");
-  flowWrap.className = "cc-screen-app";
-  flow.parentNode.insertBefore(flowWrap, flow);
-  flowWrap.appendChild(flow); // relocate the live pipeline onto the screen
-  screen.appendChild(flowWrap);
+  // The laptop screen runs the autonomous "BMA OS". The original .cc-flow stays
+  // in the DOM as the non-laptop fallback, hidden here since the laptop is live.
+  if (flow) flow.style.display = "none";
+  const osui = buildOSUI();
+  screen.appendChild(osui.el);
 
   const screenObj = new CSS3DObject(screen);
   cssGroup.add(screenObj);
@@ -227,7 +451,7 @@ async function boot() {
     def("scrScale", (wsize.x * 0.6) / CFG.pxW);
   }
   def("camY", wsize.y * 0.14); // gentle look-down, proportional to the model
-  def("targetY", lidAnchor.y * 0.62); // zoom-in ends focused up on the screen
+  def("targetY", lidAnchor.y * 0.82); // focus up on the screen + top headroom
 
   // expose for live tuning + in-console geometry analysis
   window.__bmaScene = {
@@ -249,7 +473,8 @@ async function boot() {
   });
   setTimeout(() => screen.classList.add("is-branded"), 900);
   setTimeout(() => {
-    screen.classList.add("is-live"); // boot fades out, pipeline shown
+    screen.classList.add("is-live"); // boot fades out, OS UI shown
+    osui.start(); // kick the autonomous activity loop
     emitPipeline();
   }, 3000);
   setTimeout(emitPipeline, 6500); // failsafe

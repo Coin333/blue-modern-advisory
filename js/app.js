@@ -111,6 +111,31 @@
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var current = 0;
 
+    // ---- Auto-advance: one rAF clock fills a progress bar on the active pill;
+    // when it tops out, selection advances to the next use case. The clock
+    // freezes (the bar simply holds) while the section is hovered, keyboard-
+    // focused, or off-screen, and never runs under reduced motion. ----
+    var AUTO_MS = 5200;
+    var elapsed = 0; // ms banked toward the next advance
+    var lastTs = 0; // previous rAF timestamp (0 = clock parked)
+    var raf = 0;
+    var inView = false;
+    var hovered = false;
+    var focused = false;
+
+    function setProgress(p) {
+      // only the active pill renders a bar, so only its var needs updating
+      tabs[current].style.setProperty("--uc-progress", p);
+    }
+    function isKeyboardFocus(el) {
+      // pause for keyboard focus, not for a mouse click that focuses the button
+      try {
+        return el.matches(":focus-visible");
+      } catch (_) {
+        return false;
+      }
+    }
+
     function select(i, focus) {
       i = (i + tabs.length) % tabs.length;
       current = i;
@@ -124,70 +149,119 @@
         tab.tabIndex = active ? 0 : -1;
         panels[k].classList.toggle("is-active", active);
       });
-      // keep the active pill centered in the rail (so it's never half-off-screen
-      // on a phone, and the row tracks the selection on desktop too)
+      elapsed = 0; // restart the dwell clock for the newly active pill
+      setProgress(0);
+      // keep the active pill in view in the rail (so it's never half-off-screen
+      // on a phone). Only scroll when the pill is actually clipped - on desktop
+      // every pill fits, and a no-op smooth-scroll still repaints the masked
+      // rail on each advance, which stutters.
       if (selector) {
         var sr = selector.getBoundingClientRect();
         var tr = tabs[i].getBoundingClientRect();
-        var delta = tr.left + tr.width / 2 - (sr.left + sr.width / 2);
-        selector.scrollTo({
-          left: selector.scrollLeft + delta,
-          behavior: reduce ? "auto" : "smooth",
-        });
+        if (tr.left < sr.left + 8 || tr.right > sr.right - 8) {
+          var delta = tr.left + tr.width / 2 - (sr.left + sr.width / 2);
+          selector.scrollTo({
+            left: selector.scrollLeft + delta,
+            behavior: reduce ? "auto" : "smooth",
+          });
+        }
       }
       if (focus) tabs[i].focus({ preventScroll: true });
     }
 
-    // gentle auto-advance, gated to when the section is on screen
-    var AUTO_MS = 5500;
-    var timer = 0;
-    var paused = false;
-    var inView = false;
-    function startTimer() {
-      if (timer || paused || reduce) return;
-      timer = setInterval(function () {
-        if (!paused && inView) select(current + 1, false);
-      }, AUTO_MS);
+    var running = false; // true only while the bar is actively filling
+    function setRunning(on) {
+      if (on === running) return;
+      running = on;
+      // CSS fades the bar in while this class is present, out when it's gone
+      showcase.classList.toggle("uc-running", on);
     }
-    function stopTimer() {
-      if (timer) {
-        clearInterval(timer);
-        timer = 0;
+
+    function tick(ts) {
+      raf = 0;
+      var go = inView && !hovered && !focused;
+      setRunning(go);
+      if (go) {
+        if (lastTs) {
+          elapsed += ts - lastTs;
+          if (elapsed >= AUTO_MS) {
+            select(current + 1, false); // resets elapsed + bar to 0
+          } else {
+            setProgress(elapsed / AUTO_MS);
+          }
+        }
+        lastTs = ts;
+      } else {
+        lastTs = 0; // parked: drop the stale delta so resuming never jumps
+      }
+      if (inView && !reduce) raf = requestAnimationFrame(tick);
+    }
+    function startLoop() {
+      if (reduce || raf) return;
+      lastTs = 0;
+      raf = requestAnimationFrame(tick);
+    }
+    function stopLoop() {
+      setRunning(false);
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
       }
     }
-    function pausePermanently() {
-      paused = true;
-      stopTimer();
+
+    // Pause while the pointer is actively over the pill rail (so a pill never
+    // slides out from under you as you reach for it) and while a pill holds
+    // keyboard focus. The hover flag self-clears on a timeout: a wheel-scroll
+    // fires no pointerleave, so without it the bar could freeze for good.
+    var hoverTO = 0;
+    var hoverRail = selector || showcase;
+    function holdForHover() {
+      hovered = true;
+      if (hoverTO) clearTimeout(hoverTO);
+      hoverTO = setTimeout(function () {
+        hovered = false;
+        lastTs = 0;
+      }, 900);
     }
+    function clearHover() {
+      if (hoverTO) {
+        clearTimeout(hoverTO);
+        hoverTO = 0;
+      }
+      hovered = false;
+      lastTs = 0;
+    }
+    hoverRail.addEventListener("pointermove", holdForHover);
+    hoverRail.addEventListener("pointerleave", clearHover);
+    showcase.addEventListener("focusin", function (e) {
+      if (isKeyboardFocus(e.target)) focused = true;
+    });
+    showcase.addEventListener("focusout", function () {
+      focused = false;
+      lastTs = 0;
+    });
 
     tabs.forEach(function (tab, i) {
       tab.addEventListener("click", function () {
-        pausePermanently();
-        select(i, false);
+        select(i, false); // jump + restart the clock; the cycle keeps running
       });
       tab.addEventListener("keydown", function (e) {
         var k = e.key;
         if (k === "ArrowDown" || k === "ArrowRight") {
           e.preventDefault();
-          pausePermanently();
           select(current + 1, true);
         } else if (k === "ArrowUp" || k === "ArrowLeft") {
           e.preventDefault();
-          pausePermanently();
           select(current - 1, true);
         } else if (k === "Home") {
           e.preventDefault();
-          pausePermanently();
           select(0, true);
         } else if (k === "End") {
           e.preventDefault();
-          pausePermanently();
           select(tabs.length - 1, true);
         }
       });
     });
-    // first hover/interaction anywhere on the showcase stops the auto-tour
-    showcase.addEventListener("pointerenter", pausePermanently);
 
     // .is-live (added the first time the showcase scrolls into view) gates the
     // diagrams' build animations in CSS, so each diagram assembles itself on
@@ -202,9 +276,13 @@
             inView = e.isIntersecting;
             if (inView) {
               goLive();
-              startTimer();
+              startLoop();
             } else {
-              stopTimer();
+              // leaving the viewport clears any held hover/focus so the bar
+              // always resumes (and re-fades-in) cleanly when it scrolls back
+              hovered = false;
+              focused = false;
+              stopLoop();
             }
           });
         },
@@ -214,7 +292,7 @@
     } else {
       inView = true;
       goLive();
-      startTimer();
+      startLoop();
     }
   }
 

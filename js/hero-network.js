@@ -372,7 +372,12 @@ export function initHeroNetwork(canvas) {
   // (~95KB), JPEG as the universal fallback (~236KB). If neither loads, the navy
   // gradient shows through the clear canvas.
   const panoLoader = new THREE.TextureLoader();
-  const panoSrcs = ["assets/city360-v2.avif", "assets/city360-v2.jpg"];
+  // Panorama disabled: the brand direction is an abstract navy field, not a city
+  // photo. With no source, the loader hits its fallback (panoReady = true,
+  // scene.background stays null), so the transparent canvas shows the CSS
+  // .hero-og-bg navy gradient through it, with the node network on top. To bring
+  // a backdrop back, restore: ["assets/city360-v2.avif", "assets/city360-v2.jpg"].
+  const panoSrcs = [];
   (function tryPano(i) {
     if (i >= panoSrcs.length) {
       panoReady = true; // no panorama loaded: the navy gradient stands in, so
@@ -389,12 +394,16 @@ export function initHeroNetwork(canvas) {
   const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
 
   const TOWER_X = 9;
-  const VIEW_SHIFT = -0.07; // nudge the framed tower a little right of centre
-  // while focusing a dot, sit it up and to the right so the info card tucks into
-  // the space beside it (negative X pushes content right, positive Y pushes up)
-  const FOCUS_SHIFT_X = -0.078, // dot lands just left of the popup (~58% width)
-    FOCUS_SHIFT_Y = 0.19; // dot sits at the popup card's vertical middle (top:31%)
-  let viewShift = VIEW_SHIFT; // horizontal view nudge, eased per state
+  // Live-tunable hero framing - read every frame, so you can nudge it from the
+  // console without a redeploy, e.g.:
+  //   window.__bmaHero.viewShift = -0.13   // more negative pushes the tower right
+  //   window.__bmaHero.focusShiftY = -0.08 // lower value drops the focused dot down
+  // (negative X pushes content right; positive Y pushes the focused dot up)
+  const HERO = (window.__bmaHero = window.__bmaHero || {});
+  if (HERO.viewShift == null) HERO.viewShift = -0.12; // base right-bias (was -0.07; pushed further right, off the text)
+  if (HERO.focusShiftX == null) HERO.focusShiftX = -0.12; // right-bias while focusing a dot
+  if (HERO.focusShiftY == null) HERO.focusShiftY = -0.05; // vertical push of the focused dot (was 0.19 = up to top:31%; negative drops it toward centre, below the card)
+  let viewShift = HERO.viewShift; // horizontal view nudge, eased per state
   let viewShiftY = 0; // vertical view nudge, only while focusing a dot
   function applyViewOffset() {
     camera.setViewOffset(
@@ -1462,8 +1471,9 @@ export function initHeroNetwork(canvas) {
     // while focusing a dot, ease the framing up and to the right so the info
     // card sits beside it; otherwise hold the gentle right-bias at centre height
     const focusing = !manual && (camState === "toHub" || camState === "atHub");
-    viewShift += ((focusing ? FOCUS_SHIFT_X : VIEW_SHIFT) - viewShift) * 0.06;
-    viewShiftY += ((focusing ? FOCUS_SHIFT_Y : 0) - viewShiftY) * 0.06;
+    viewShift +=
+      ((focusing ? HERO.focusShiftX : HERO.viewShift) - viewShift) * 0.06;
+    viewShiftY += ((focusing ? HERO.focusShiftY : 0) - viewShiftY) * 0.06;
     applyViewOffset();
     const ce = Math.cos(orbit.el),
       se = Math.sin(orbit.el);
