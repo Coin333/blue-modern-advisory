@@ -21517,6 +21517,18 @@ a.trusted-marquee-item {
     animation: none !important;
   }
 }
+/* Visibility-gate the 7 looping card vizzes. ~170 infinite SVG animations
+   otherwise run full-time regardless of the viewport, including on cards rotated
+   to the back of the 3D ring. .viz-live is toggled by the carousel's
+   IntersectionObserver; .is-front is set on the front-facing card each frame.
+   animation-play-state freezes the timeline at zero cost and resumes identically,
+   so what the viewer actually sees is unchanged. */
+#gtm-systems:not(.viz-live) .gtm-viz * {
+  animation-play-state: paused !important;
+}
+#gtm-systems.is-scrub .gtm-card:not(.is-front) .gtm-viz * {
+  animation-play-state: paused;
+}
 @media (max-width: 860px) {
   /* never go 3D on small screens - keep the readable flat grid */
   #gtm-systems.is-scrub {
@@ -24135,6 +24147,15 @@ a.trusted-marquee-item {
 .cc-flow.is-paused .cc-pipe-flow,
 .cc-flow.is-paused .cc-fillable::after,
 .cc-flow.is-paused .cc-score-col {
+  animation-play-state: paused;
+}
+/* freeze the loop while the section is off-screen (separate class from is-paused,
+   which drives click-to-inspect). Toggled by cc-hero.js. */
+.cc-flow--idle .cc-pipe-signal,
+.cc-flow--idle .cc-st-chip,
+.cc-flow--idle .cc-pipe-flow,
+.cc-flow--idle .cc-fillable::after,
+.cc-flow--idle .cc-score-col {
   animation-play-state: paused;
 }
 /* re-sync the loop from 0 when switching ICP tabs */

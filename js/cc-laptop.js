@@ -278,12 +278,22 @@ function buildOSUI() {
   });
 
   let timer = null;
+  let kicked = false;
   return {
     el,
     start() {
       if (timer) return;
-      tick();
+      if (!kicked) {
+        kicked = true;
+        tick(); // first run paints immediately; resumes just restart the interval
+      }
       timer = setInterval(tick, 850);
+    },
+    stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
     },
   };
 }
@@ -477,7 +487,8 @@ async function boot() {
   setTimeout(() => screen.classList.add("is-branded"), 900);
   setTimeout(() => {
     screen.classList.add("is-live"); // boot fades out, OS UI shown
-    osui.start(); // kick the autonomous activity loop
+    osWanted = true; // the feed should run from here on (while on-screen)
+    setActive(visible && !document.hidden); // start feed + loop iff on-screen
     emitPipeline();
   }, 3000);
   setTimeout(emitPipeline, 6500); // failsafe
@@ -514,25 +525,65 @@ async function boot() {
   resize();
 
   let visible = true;
+  let osWanted = false; // becomes true once the boot timeline kicks the feed
+  // Pause ALL of the laptop's continuous work when it scrolls off-screen or the
+  // tab is hidden: cancel the render rAF, clearInterval the OS-UI activity feed,
+  // and freeze the two looping screen CSS animations (via .cc-os-idle). None of
+  // it is visible when parked, so this is invisible to the viewer and frees the
+  // main thread for the rest of the page (Lenis scroll, the GTM carousel, etc.).
+  function setActive(on) {
+    if (on) {
+      host.classList.remove("cc-os-idle");
+      if (osWanted) osui.start();
+      needsRender = true; // redraw once on re-entry
+      startLoop();
+    } else {
+      host.classList.add("cc-os-idle");
+      osui.stop();
+      stopLoop();
+    }
+  }
   new IntersectionObserver(
     (entries) =>
       entries.forEach((e) => {
         visible = e.isIntersecting;
-        if (visible) needsRender = true; // redraw once on re-entry
+        setActive(visible && !document.hidden);
       }),
     { threshold: 0 },
   ).observe(host);
+  document.addEventListener("visibilitychange", () => {
+    setActive(visible && !document.hidden);
+  });
 
   /* ------------------------------- render -------------------------------- */
   const clock = new THREE.Clock();
   let t = 0;
   let acc = 0;
+  let rafId = 0;
+  let running = false;
   const STEP = 1 / 36; // throttle to ~36fps: the tilt + pipeline don't need 60
+  // Started/stopped by setActive() from the visibility observer, so the loop does
+  // NO work (not even an rAF wakeup) while the laptop is off-screen or the tab is
+  // hidden. While on-screen it stays render-on-demand (the draw is skipped once
+  // the pose has settled), so on-screen idle cost stays ~0 too.
+  function startLoop() {
+    if (running) return;
+    running = true;
+    clock.getDelta(); // discard the idle gap so t doesn't jump after a pause
+    rafId = requestAnimationFrame(loop);
+  }
+  function stopLoop() {
+    running = false;
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
   function loop() {
-    requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05);
     t += dt;
-    if (!visible) return; // off-screen: rAF keeps ticking but nothing renders
+    if (!visible) return; // belt-and-suspenders; off-screen also parks the loop
     acc += dt;
     if (acc < STEP) return; // skip frames to cut CSS3D + WebGL cost
     acc = 0;
@@ -595,7 +646,7 @@ async function boot() {
     renderer.render(scene, camera);
     css.render(cssScene, camera);
   }
-  loop();
+  startLoop();
 
   console.info(
     "[cc-laptop] tune with window.__bmaLaptop (live):",

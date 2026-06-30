@@ -285,4 +285,19 @@ if (flow) {
     document.addEventListener("bma:os-emit", go, { once: true });
     setTimeout(go, 7000); // failsafe if the emit never arrives
   }
+
+  // Pause the looping pipeline animations whenever the section scrolls off-screen.
+  // Mainly helps the no-laptop fallback (low memory / save-data), where the flat
+  // pipeline stays in normal flow and loops full-time. Uses a separate class from
+  // is-paused (which drives click-to-inspect) so the two never fight.
+  const ccSection = document.querySelector(".cc-section");
+  if (ccSection && "IntersectionObserver" in window) {
+    new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) =>
+          flow.classList.toggle("cc-flow--idle", !e.isIntersecting),
+        ),
+      { rootMargin: "200px 0px 200px 0px", threshold: 0 },
+    ).observe(ccSection);
+  }
 }

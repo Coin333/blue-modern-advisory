@@ -14,6 +14,22 @@
   const cards = [...ring.querySelectorAll(".gtm-card")];
   if (cards.length < 2) return;
 
+  // Pause every card's looping SVG viz whenever the whole section is off-screen
+  // (a cheap, separate gate from the 3D rAF below; see styles.css .viz-live).
+  // Set up before the capability gate so it also covers the flat-grid fallback
+  // on mobile - exactly the weak devices that benefit most.
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) =>
+          section.classList.toggle("viz-live", e.isIntersecting),
+        ),
+      { rootMargin: "200px 0px 200px 0px", threshold: 0 },
+    ).observe(section);
+  } else {
+    section.classList.add("viz-live");
+  }
+
   // cross-page landing: the hero sends us here as capabilities.html?card=N
   function cardParam() {
     const m = /[?&]card=(\d+)/.exec(window.location.search);
