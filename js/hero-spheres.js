@@ -42,7 +42,8 @@
     angEnd: -196, // small sphere angle at p=1 (rolled down + off the bottom-left)
     lightDeg: -123, // light direction (deg) - upper-left of the planet centre
     spin: 1, // 1 = small sphere spins as it rolls, 0 = off
-    smallImg: "assets/hero-sphere.avif", // image for the small sphere
+    smallImg: "assets/hero-sphere.png", // small sphere image (transparent circle)
+    imgZoom: 1.04, // slight over-draw so the circle fills the clip with no fringe
     rim: "#d4e6f6", // limb / rim-light colour
     baseLit: "#13243d", // lit-side base of the canvas spheres
     baseDark: "#070d18", // far-side shadow of the canvas spheres
@@ -208,10 +209,16 @@
     const sweep = ((HERO.angEnd - HERO.angStart) * Math.PI) / 180;
     const rollSpin = HERO.spin ? (g.orbit * sweep * p) / r : 0;
     if (imgReady) {
+      // clip to a circle (insurance against any square/white edge in the asset)
+      // and over-draw slightly so the image circle fills the clip cleanly.
       ctx.save();
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, TAU);
+      ctx.clip();
       ctx.translate(s.x, s.y);
       ctx.rotate(rollSpin);
-      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      const z = HERO.imgZoom || 1;
+      ctx.drawImage(img, -r * z, -r * z, r * 2 * z, r * 2 * z);
       ctx.restore();
       // a soft rim glow to seat the image in the scene's light
       ctx.save();
