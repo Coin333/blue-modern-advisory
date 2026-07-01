@@ -106,6 +106,22 @@
   };
   img.src = HERO.smallImg;
 
+  /* --------------------------- big-planet image ------------------------ */
+  // The big "circle" is now planet-blue.png. Its center is placed off-screen
+  // bottom-right (same geo() center as the canvas sphere), scaled so its radius
+  // matches g.bR - so only the planet's TOP-LEFT quarter curves into frame.
+  let planetReady = false;
+  const planetImg = new Image();
+  planetImg.decoding = "async";
+  planetImg.onload = function () {
+    planetReady = true;
+    repaint();
+  };
+  planetImg.onerror = function () {
+    planetReady = false; // fall back to the canvas-drawn sphere
+  };
+  planetImg.src = HERO.planetImg || "assets/planet-blue.png";
+
   /* --------------------------- sizing / dpr ---------------------------- */
   let W = 0,
     H = 0,
@@ -292,6 +308,45 @@
     ctx.restore();
   }
 
+  // draw planet-blue.png as the big planet: center at g.bcx/g.bcy (off-screen
+  // bottom-right), radius g.bR, clipped to a circle so the limb reads clean. Only
+  // the top-left quarter falls inside the viewport. Falls back to canvas sphere.
+  function drawBigPlanet(g) {
+    if (!planetReady) {
+      sphere(g.bcx, g.bcy, g.bR, {
+        rimSpread: 0.18,
+        rimAlpha: 0.55,
+        limb: true,
+        limbW: Math.max(1.4, H * 0.0022),
+        limbArc: Math.PI / 2.6,
+        limbAlpha: 0.92,
+      });
+      return;
+    }
+    const r = g.bR;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(g.bcx, g.bcy, r, 0, TAU);
+    ctx.clip();
+    ctx.drawImage(planetImg, g.bcx - r, g.bcy - r, r * 2, r * 2);
+    ctx.restore();
+    // a soft rim light along the lit limb so it seats into the scene
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(g.bcx, g.bcy, r, 0, TAU);
+    ctx.clip();
+    const la = (HERO.lightDeg * Math.PI) / 180;
+    const ex = g.bcx + Math.cos(la) * r,
+      ey = g.bcy + Math.sin(la) * r;
+    const rg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 0.5);
+    rg.addColorStop(0, rgba(HERO.rim, 0.35));
+    rg.addColorStop(0.5, rgba(HERO.rim, 0.08));
+    rg.addColorStop(1, rgba(HERO.rim, 0));
+    ctx.fillStyle = rg;
+    ctx.fillRect(g.bcx - r, g.bcy - r, r * 2, r * 2);
+    ctx.restore();
+  }
+
   function render(p) {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -299,14 +354,7 @@
     background();
 
     const g = geo();
-    sphere(g.bcx, g.bcy, g.bR, {
-      rimSpread: 0.18,
-      rimAlpha: 0.55,
-      limb: true,
-      limbW: Math.max(1.4, H * 0.0022),
-      limbArc: Math.PI / 2.6,
-      limbAlpha: 0.92,
-    });
+    drawBigPlanet(g);
     drawSmall(p, g);
 
     if (HERO.debug) {

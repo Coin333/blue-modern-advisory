@@ -26796,3 +26796,308 @@ a.trusted-marquee-item {
     max-width: 540px;
   }
 }
+
+/* ============================================================================
+   "What We Build" - switchback descent scene (prototype v2)
+   Section keeps its .pipe-bg (blurred skyline + dark scrim) + data-nav-dark, so
+   the nav brand stays light over it. Inner scene .wwb2: a spinning ball rolls
+   DOWN a zig-zag slope, switch-backing left/right; the slope translates UP so it
+   reads as continuous descent. Four cards pop at the turns, opposite the ball.
+   Driven by js/what-we-build.js (motion-web scroll()).
+   ------------------------------------------------------------------------- */
+
+/* Tall track so there's scroll distance to scrub the descent + 4 card pops. */
+#what-bma-builds.wwb2--scrub,
+#what-bma-builds.is-scrub {
+  min-height: 480vh;
+  display: block;
+}
+#what-bma-builds .wwb2 {
+  position: relative;
+  margin-top: 32px;
+}
+#what-bma-builds .wwb2-stage {
+  position: relative;
+  height: 100vh;
+  max-height: 860px;
+  min-height: 540px;
+  overflow: hidden;
+  will-change: transform;
+}
+#what-bma-builds .wwb2--static .wwb2-stage {
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 8px;
+}
+
+/* --- the zig-zag slope (a tall SVG that translates UP as you scroll) ------ */
+/* the slope is the FULL stage width so the polyline's scene-center (W/2) lines
+   up with the viewport center; the ball's x-offset is measured from that. */
+#what-bma-builds .wwb2-slope {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+}
+/* JS sizes the SVG to the polyline's pixel bounds (1:1) and translates this
+   wrapper vertically so the ball's current path-point stays viewport-centered. */
+#what-bma-builds .wwb2-path {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  will-change: transform;
+}
+#what-bma-builds .wwb2-zig {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+#what-bma-builds .wwb2-zig-path {
+  fill: none;
+  stroke: #5fc6dc; /* brand pipe cyan, kept subtle (node/connector) */
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.62;
+  filter: drop-shadow(0 0 6px rgba(95, 198, 220, 0.4));
+}
+#what-bma-builds .wwb2-zig-node {
+  fill: #0b2236;
+  stroke: #5fc6dc;
+  stroke-width: 1.6;
+  opacity: 0.9;
+}
+
+/* --- the ball: vertically centered, swings horizontally, spins ---------- */
+/* left/top:50% + translate(-50%,-50%) centers it; JS adds the swing + dip + spin
+   into that same transform. It never translates vertically off center (only a
+   small dip), so its screen-y stays ~centered. */
+#what-bma-builds .wwb2-ball {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(78px, 9.5vw, 120px);
+  height: clamp(78px, 9.5vw, 120px);
+  transform: translate(-50%, -50%);
+  will-change: transform;
+  z-index: 3;
+  filter: drop-shadow(0 16px 28px rgba(4, 12, 24, 0.55));
+}
+#what-bma-builds .wwb2-ball img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+}
+
+/* --- the four build cards: pop at each turn, opposite the ball ----------- */
+#what-bma-builds .wwb2-cards {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 4;
+  pointer-events: none;
+}
+/* each card is absolutely placed on its assigned side, stacked down the stage */
+#what-bma-builds .wwb2-card {
+  position: absolute;
+  width: clamp(220px, 24vw, 300px);
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 162, 205, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(12, 26, 40, 0.78),
+    rgba(8, 18, 30, 0.72)
+  );
+  backdrop-filter: blur(8px) saturate(120%);
+  opacity: 0;
+  transition:
+    opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* vertical slot per card: spread down the stage so all four are readable */
+#what-bma-builds .wwb2-card:nth-child(1) {
+  top: 12%;
+}
+#what-bma-builds .wwb2-card:nth-child(2) {
+  top: 34%;
+}
+#what-bma-builds .wwb2-card:nth-child(3) {
+  top: 56%;
+}
+#what-bma-builds .wwb2-card:nth-child(4) {
+  top: 78%;
+}
+/* side placement (opposite the ball at that turn) + closed offset toward edge */
+#what-bma-builds .wwb2-card--left {
+  left: clamp(20px, 5vw, 72px);
+  transform: translateX(-28px) scale(0.98);
+}
+#what-bma-builds .wwb2-card--right {
+  right: clamp(20px, 5vw, 72px);
+  transform: translateX(28px) scale(0.98);
+}
+#what-bma-builds .wwb2-card.is-open {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+#what-bma-builds .wwb2-card-step {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #5fc6dc;
+  opacity: 0.85;
+  display: block;
+  margin-bottom: 8px;
+}
+#what-bma-builds .wwb2-card-title {
+  font-family: var(--font-heading);
+  font-size: 1.12rem;
+  font-weight: 500;
+  color: #eff5fa;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+#what-bma-builds .wwb2-card-text {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #a3b6c8;
+  margin: 0;
+}
+#what-bma-builds .wwb2-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  color: #7f97ab;
+  margin: 0;
+  z-index: 2;
+}
+
+/* --- static / no-pin fallback: everything flows and stays legible -------- */
+#what-bma-builds .wwb2--static .wwb2-slope {
+  position: relative;
+  height: 260px;
+  width: clamp(300px, 60vw, 520px);
+  margin: 0 auto;
+  transform: translateX(-50%);
+  left: 50%;
+}
+#what-bma-builds .wwb2--static .wwb2-path {
+  position: relative;
+  height: 100%;
+  transform: none !important;
+}
+#what-bma-builds .wwb2--static .wwb2-ball {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin: -20px auto 20px;
+  transform: none !important;
+}
+#what-bma-builds .wwb2--static .wwb2-cards {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 24px;
+  pointer-events: auto;
+}
+#what-bma-builds .wwb2--static .wwb2-card {
+  position: static;
+  width: auto;
+  transform: none !important;
+  opacity: 1;
+}
+#what-bma-builds .wwb2--static .wwb2-foot {
+  position: static;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  #what-bma-builds .wwb2-card {
+    width: clamp(180px, 40vw, 240px);
+  }
+  #what-bma-builds .wwb2--static .wwb2-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   "What We Build" - bottom-left corner planet (planet-blue.png), decorative.
+   A continuation of the hero's planet, anchored in the section's bottom-left
+   corner, behind the content. Dark navy matches the section bg. Its center sits
+   off-screen beyond the bottom-left so the planet's arc curves up into frame.
+   ------------------------------------------------------------------------- */
+#what-bma-builds {
+  position: relative;
+}
+/* Anchored to the pinned .wwb2-stage (viewport-tall, overflow:hidden) so it sits
+   in the visible bottom-left corner during the roll. Its center sits off-screen
+   beyond the bottom-left, so the planet's arc curves up into the corner. */
+#what-bma-builds .wwb2-stage .wwb-planet {
+  position: absolute;
+  z-index: 0; /* behind the slope/ball/cards */
+  left: -30%;
+  bottom: -40%;
+  width: min(78vw, 820px);
+  height: min(78vw, 820px);
+  background: url(../assets/planet-blue.png) center / contain no-repeat;
+  pointer-events: none;
+  opacity: 0.85;
+  /* very slow idle rotation so the planet "turns" beneath the rolling ball */
+  animation: wwb-planet-spin 140s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  #what-bma-builds .wwb-planet {
+    animation: none;
+  }
+}
+@keyframes wwb-planet-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 640px) {
+  #what-bma-builds .wwb2-stage .wwb-planet {
+    left: -45%;
+    bottom: -45%;
+    width: 110vw;
+    height: 110vw;
+    opacity: 0.6;
+  }
+}

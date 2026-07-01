@@ -307,6 +307,10 @@ async function boot() {
   // zoom: end size of the push-in. Bigger = the screen reads more legibly. The
   // keyboard runs off the bottom at the end; that's intended (focus on the app).
   def("fill", window.innerWidth < 700 ? 1.8 : 2.8);
+  // MODERATE-DOLLY cap: how much CLOSER the scroll dolly brings the camera (0 = no
+  // move; higher = nearer). The screen stays ON the lid regardless (flat=0), so this
+  // only controls nearness - the laptop never dives into / fills with the screen.
+  def("zoomCap", 0.34);
   def("fov", 32);
   def("baseYaw", -0.18); // resting turn of the laptop (rad)
   def("basePitch", -0.02);
@@ -584,8 +588,11 @@ async function boot() {
     const dt = Math.min(clock.getDelta(), 0.05);
     t += dt;
     if (!visible) return; // belt-and-suspenders; off-screen also parks the loop
+    const scrollActive = !!(CFG.scrollDrive && CFG.scrollDrive.active);
     acc += dt;
-    if (acc < STEP) return; // skip frames to cut CSS3D + WebGL cost
+    // throttle to ~36fps at rest, but draw EVERY frame while scroll-driven so the
+    // screen scaling stays glued to the smooth 60fps scroll (kills white-edge flicker)
+    if (acc < STEP && !scrollActive) return;
     acc = 0;
 
     // ease the tilt toward the cursor every step (cheap math); the pose is
@@ -602,7 +609,7 @@ async function boot() {
     // CSS3D draw entirely. The on-screen OS UI keeps animating on its own via CSS
     // (it lives in the DOM, not the GL render), so the screen stays alive while
     // the heavy 3D draw idles at ~0 cost until you move the pointer again.
-    if (!intro && !settling && !needsRender) return;
+    if (!intro && !settling && !needsRender && !scrollActive) return;
     needsRender = false;
 
     // live framing: fit the bounding SPHERE so the whole laptop stays visible
@@ -611,37 +618,94 @@ async function boot() {
     camera.fov = CFG.fov;
     const vt = Math.tan((CFG.fov * Math.PI) / 360);
     const tight = Math.min(vt, vt * camera.aspect); // tighter half-fov (tan)
-    // one-time zoom-in onto the animation: start pulled back on the whole
-    // laptop, then push in and pan up to the screen as the pipeline loads (~3s)
-    const zp = Math.min(1, Math.max(0, (t - 3) / 1.7));
-    const ez = 1 - Math.pow(1 - zp, 3); // easeOut
-    const effFill = CFG.fill * (0.5 + 0.5 * ez);
+    // Framing. Normally a one-time time-based push-in: start pulled back on the
+    // whole laptop, then push in + pan up to the screen as the pipeline loads
+    // (~3s). When the Ascent is engaged it hands us
+    // window.__bmaLaptop.scrollDrive = { zoom, up, active } and the dolly + the
+    // look-up become a pure function of scroll instead of time.
+    let effFill, lookY;
+    let flat = 0; // 0 = 3D laptop at rest; 1 = screen flattened head-on + filling
+    let fillLookY = 0; // world-y the flat screen centers on (look-up adds on top)
+    if (scrollActive) {
+      const sd = CFG.scrollDrive;
+      const z = Math.min(1, Math.max(0, sd.zoom || 0));
+      const zeFull = 1 - Math.pow(1 - z, 3); // easeOut, same shape as the auto push-in
+      // MODERATE DOLLY - just move CLOSER to the laptop, do NOT dive into the screen.
+      // zoomCap limits how much closer the camera gets (bigger effFill = nearer), but
+      // the laptop stays a normal 3D laptop: the screen is NEVER flattened off the lid
+      // (flat stays 0), so the live BMA OS UI stays rendered ON the display the whole
+      // time. The old flat-screen/full-bleed branch therefore never engages.
+      const cap = CFG.zoomCap == null ? 0.34 : CFG.zoomCap;
+      const ze = zeFull * cap;
+      const up = Math.min(1, Math.max(0, sd.up || 0));
+      const fillEnd = CFG.fill * (sd.fillBoost || 1);
+      effFill = 0.5 * CFG.fill + (fillEnd - 0.5 * CFG.fill) * ze;
+      flat = 0; // keep the screen ON the lid; the laptop is only shown nearer
+      // the look-up then tilts the camera UP off the (still-on-lid) screen into the
+      // sky to hand off to the cards. Focus rests on the lid screen (targetY).
+      fillLookY = CFG.targetY;
+      lookY = fillLookY + up * fitR * 7;
+    } else {
+      const zp = Math.min(1, Math.max(0, (t - 3) / 1.7));
+      const ez = 1 - Math.pow(1 - zp, 3); // easeOut
+      effFill = CFG.fill * (0.5 + 0.5 * ez);
+      lookY = CFG.targetY * ez;
+    }
     const dist = fitR / (tight / Math.sqrt(1 + tight * tight)) / effFill;
     camera.position.set(0, CFG.camY, dist);
-    camera.lookAt(0, CFG.targetY * ez, 0); // pan up onto the screen
+    camera.lookAt(0, lookY, 0); // pan up onto the screen (+ look-up when scrolling)
     camera.updateProjectionMatrix();
 
     // tilt toward cursor, mirrored onto the CSS3D group. (The idle float was
     // removed so the pose can fully settle and the loop can stop drawing.)
-    const yaw = CFG.spin
-      ? Math.sin(t * 0.4) * CFG.spin // sweep side to side to check alignment
-      : CFG.baseYaw + curX * CFG.tiltYaw;
-    const pitch = CFG.basePitch + curY * CFG.tiltPitch * 0.5;
-    group.rotation.set(pitch, yaw, CFG.baseRoll);
+    // flatten the whole pose toward head-on as the screen fills (1 - flat)
+    const yaw =
+      (CFG.spin
+        ? Math.sin(t * 0.4) * CFG.spin // sweep side to side to check alignment
+        : CFG.baseYaw + curX * CFG.tiltYaw) *
+      (1 - flat);
+    const pitch = (CFG.basePitch + curY * CFG.tiltPitch * 0.5) * (1 - flat);
+    group.rotation.set(pitch, yaw, CFG.baseRoll * (1 - flat));
     cssGroup.rotation.copy(group.rotation);
 
-    // place the screen on the lid (live-tunable)
-    screenObj.position.set(
-      lidAnchor.x + CFG.scrX,
-      lidAnchor.y + CFG.scrY,
-      lidAnchor.z + CFG.scrZ,
-    );
-    screenObj.rotation.set(CFG.scrRotX, CFG.scrRotY, 0);
-    screenObj.scale.set(
-      CFG.scrScale,
-      CFG.scrScale * CFG.scrSquash,
-      CFG.scrScale,
-    );
+    // place the screen: on the lid normally, blended toward a flat full-viewport
+    // COVER as the dolly flattens it (flat 0->1) so it "becomes the page".
+    const slx = lidAnchor.x + CFG.scrX;
+    const sly = lidAnchor.y + CFG.scrY;
+    const slz = lidAnchor.z + CFG.scrZ;
+    if (flat > 0.0001) {
+      // world half-extents of the viewport at the screen plane (z=0, dist away)
+      const halfH = dist * vt;
+      const halfW = halfH * camera.aspect;
+      // scale the pxW x pxH screen element to COVER the viewport (+ slight overscan)
+      // as the dolly flattens it (flat 0->1) so it "becomes the page". No tools zoom
+      // or pan - just the straight screen-fill; the camera then rises to the cards.
+      const cover =
+        Math.max((2 * halfH) / CFG.pxH, (2 * halfW) / CFG.pxW) * 1.12;
+      screenObj.position.set(
+        slx + (0 - slx) * flat,
+        sly + (fillLookY - sly) * flat,
+        slz + (0 - slz) * flat,
+      );
+      screenObj.rotation.set(
+        CFG.scrRotX + (0 - CFG.scrRotX) * flat,
+        CFG.scrRotY + (0 - CFG.scrRotY) * flat,
+        0,
+      );
+      const sx = CFG.scrScale + (cover - CFG.scrScale) * flat;
+      const sy =
+        CFG.scrScale * CFG.scrSquash +
+        (cover - CFG.scrScale * CFG.scrSquash) * flat;
+      screenObj.scale.set(sx, sy, sx);
+    } else {
+      screenObj.position.set(slx, sly, slz);
+      screenObj.rotation.set(CFG.scrRotX, CFG.scrRotY, 0);
+      screenObj.scale.set(
+        CFG.scrScale,
+        CFG.scrScale * CFG.scrSquash,
+        CFG.scrScale,
+      );
+    }
 
     renderer.render(scene, camera);
     css.render(cssScene, camera);

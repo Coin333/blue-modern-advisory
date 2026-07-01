@@ -99,6 +99,36 @@ function initScrollCoupled(getScroll) {
   const navPill = document.querySelector(".nav-pill");
   const marquees = getMarquees();
 
+  // The split nav's left brand must read light over DARK-background sections and
+  // dark ink over light ones. The dark sections are tagged [data-nav-dark] in
+  // the markup (hero, What We Build, the Use Cases carousel, footer). Each frame
+  // we test which tagged section's band currently sits under the nav line and
+  // toggle .nav-theme-dark accordingly. Pages with no tagged sections (about,
+  // capabilities) keep the dark-ink default, so this is a no-op there.
+  const darkSections = navWrap
+    ? Array.prototype.slice.call(document.querySelectorAll("[data-nav-dark]"))
+    : [];
+  // The nav floats ~18px from the top and is ~64px tall, so its visual midline
+  // sits ~50px down the viewport. We flip the brand when THAT line is over a
+  // dark section, which matches what the eye sees behind the brand.
+  const NAV_LINE = 50;
+  // Cache each dark section's document-space [top, bottom). Recompute only when
+  // the layout could have changed (first run, resize, document-height change) so
+  // we never read offsetTop on every scroll frame (which would thrash layout).
+  let ranges = [];
+  let measuredHeight = -1;
+  function measure() {
+    ranges = darkSections.map((el) => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      return [top, top + el.offsetHeight];
+    });
+    measuredHeight = docEl.scrollHeight;
+  }
+  if (darkSections.length) {
+    measure();
+    window.addEventListener("resize", measure, { passive: true });
+  }
+
   function update(scrollY, velocity) {
     const max = docEl.scrollHeight - window.innerHeight;
     const progress = max > 0 ? clamp(scrollY / max, 0, 1) : 0;
@@ -106,6 +136,21 @@ function initScrollCoupled(getScroll) {
 
     if (navWrap) navWrap.classList.toggle("is-scrolled", scrollY > 24);
     if (navPill) navPill.classList.toggle("nav-pill--scrolled", scrollY > 24);
+
+    if (navWrap && darkSections.length) {
+      // late content (fonts, images, lazy diagrams) can change section offsets;
+      // re-measure if the document height moved since the last measurement
+      if (docEl.scrollHeight !== measuredHeight) measure();
+      const navLine = scrollY + NAV_LINE;
+      let overDark = false;
+      for (let i = 0; i < ranges.length; i++) {
+        if (navLine >= ranges[i][0] && navLine < ranges[i][1]) {
+          overDark = true;
+          break;
+        }
+      }
+      navWrap.classList.toggle("nav-theme-dark", overDark);
+    }
 
     // Velocity skew is a fine-pointer flourish only. On touch the scroll-velocity
     // signal is coarse and jumpy, so skewing the marquee made it look blocky -

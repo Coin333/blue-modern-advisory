@@ -235,8 +235,24 @@ html.bma-leaving #root {
     border-color 0.35s ease,
     transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
+/* Split-nav redesign: the right pill is intentionally a translucent glass
+   panel (it carries its own contrast via backdrop-blur + border + shadow), so
+   exempt it from the forced solid-white above and skip the condense scale. */
+.nav-pill--bar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
+}
+.nav-wrapper--split.is-scrolled .nav-pill--bar {
+  background: rgba(255, 255, 255, 0.82) !important;
+}
 .nav-pill.nav-pill--scrolled {
   transform: scale(0.97);
+}
+.nav-pill--bar.nav-pill--scrolled {
+  transform: none;
 }
 
 /* ---- Sign In button: gentle lighten on hover --------------------------- */
@@ -1964,4 +1980,253 @@ html.bma-leaving #root {
   font-size: 1.45rem;
   font-weight: 600;
   margin-top: 1.4rem;
+}
+
+/* ==========================================================================
+   Capabilities "Ascent" - one scroll-scrubbed cinematic between the 3D laptop
+   and the cards: scroll dollies INTO the laptop, the camera tilts up into a
+   sky that gradients white -> carousel-blue (#5b9bc9), then 7 cards fly past
+   (each rises, holds to read, accelerates off to a side). Every visual is a
+   pure function of one scroll progress p, so it scrubs both directions.
+
+   Desktop-only: cc-ascent.js adds .cc-ascent-on to <html> when the device is
+   capable. Otherwise this section is hidden and the #gtm-systems ring carousel
+   shows exactly as before (the mobile / reduced-motion fallback).
+   ========================================================================== */
+#cc-ascent {
+  display: none;
+}
+.cc-ascent-on #cc-ascent {
+  display: block;
+}
+.cc-ascent-on #gtm-systems {
+  display: none;
+}
+
+.cc-ascent {
+  position: relative;
+  /* scroll budget: ~0.5vh dolly + look-up, ~1vh per card x7 (tunable in JS too) */
+  min-height: 760vh;
+  /* dark navy behind everything so a pin sub-pixel gap can never flash WHITE
+     (the white->blue sky is a layer on top of this) */
+  background: #0d2740;
+  z-index: 1;
+}
+/* the fake-pinned viewport: cc-ascent.js translateY()s this so it stays put
+   while you scroll the section's length (sticky is broken under overflow-x) */
+.cc-ascent-stage {
+  position: relative;
+  width: 100vw;
+  /* overscan the viewport by ~130px each side (centered by the pin math) so the
+     top/bottom edges are ALWAYS covered - no white edge flash as the pin shifts */
+  height: calc(100vh + 260px);
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+  background: #0d2740;
+  will-change: transform;
+}
+/* full-bleed sky; --sky (0..1, set by cc-ascent.js) lerps white -> #5b9bc9 */
+.cc-ascent-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* a darker dusk sky: deep navy up top (you look up INTO it), medium blue low.
+     --sky (0..1) fades the whole thing in from white over the look-up band. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #0d2740 calc(var(--sky, 0) * 100%), #ffffff) 0%,
+    color-mix(in srgb, #1f567c calc(var(--sky, 0) * 100%), #ffffff) 52%,
+    color-mix(in srgb, #3f86b0 calc(var(--sky, 0) * 92%), #ffffff) 100%
+  );
+}
+/* slot the laptop host is reparented into while the ascent is engaged */
+.cc-ascent-lap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+/* the climbing cards layer (populated at runtime from the #gtm-systems cards) */
+.cc-ascent-cards {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+/* the laptop host (.cc-os) is reparented into .cc-ascent-lap while engaged:
+   fill the stage, and drop its in-flow navy gradient + bottom mask so it sits
+   cleanly over the sky - the transparent canvas reveals the sky as the camera
+   tilts up off the lid. */
+.cc-ascent-lap .cc-os {
+  height: 100%;
+  background: none;
+}
+.cc-ascent-lap .cc-os-canvas,
+.cc-ascent-lap .cc-os-css {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+/* the laptop now lives in the ascent, so collapse its original in-flow stage */
+.cc-ascent-on #core-competencies .cc-stage {
+  display: none;
+}
+
+/* once the sky is full blue we park the WebGL (hide the host -> cc-laptop's IO
+   stops its loop) and the cards take over. Reversible: scrolling back up shows
+   the laptop again and the loop resumes. */
+.cc-ascent-stage.is-climb .cc-ascent-lap {
+  display: none;
+}
+
+/* cards layer: a CSS-perspective space the 7 capability cards climb through.
+   --uy (per card) is set by cc-ascent.js in Step 5; Step 4 just fades it in. */
+.cc-ascent-cards {
+  perspective: 1500px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  opacity: 0;
+}
+.cc-ascent-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 540px;
+  height: 544px;
+  margin: -272px 0 0 -270px;
+  border-radius: 22px;
+  overflow: hidden;
+  /* keep the cards' OWN dark navy surface (their text is light), so they stay
+     legible over the sky; just give the ascent a crisper frame + lift. */
+  box-shadow:
+    0 30px 60px -30px rgba(0, 0, 0, 0.66),
+    0 0 0 1px rgba(91, 155, 201, 0.38);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  contain: layout paint;
+  /* cc-ascent.js drives transform per card; default rests centered */
+  transform: translate3d(0, 0, 0);
+}
+/* legibility bump for the full-screen ascent context (vs the small ring) */
+.cc-ascent-card .gtm-card-viz {
+  height: 200px;
+}
+.cc-ascent-card .gtm-card-body {
+  padding: 26px 32px 30px;
+}
+.cc-ascent-card .gtm-card-num {
+  font-size: 0.9rem;
+}
+.cc-ascent-card .gtm-card-title {
+  font-size: 1.62rem;
+}
+.cc-ascent-card .gtm-card-desc {
+  font-size: 1.04rem;
+  color: #c4d3e1;
+}
+.cc-ascent-card .gtm-card-val {
+  font-size: 0.98rem;
+  color: #e4eef6;
+}
+/* the centered/held card gets a soft brand glow so it reads as the focus */
+.cc-ascent-card.is-card-live {
+  box-shadow:
+    0 36px 70px -34px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(91, 155, 201, 0.6),
+    0 0 54px -10px rgba(91, 155, 201, 0.4);
+}
+/* perf: only the centered/held card runs its ~25 looping SVG animations; the
+   rising/exiting cards are frozen (cc-ascent.js sets .is-card-live on one). */
+#cc-ascent .cc-ascent-card .gtm-viz * {
+  animation-play-state: paused;
+}
+#cc-ascent .cc-ascent-card.is-card-live .gtm-viz * {
+  animation-play-state: running;
+}
+
+/* the white paint wipe lands you on the Delivery "four cards" page - make it a
+   clean white page so the white sheet fades into it with no seam (desktop). */
+.cc-ascent-on .delivery-section {
+  background: #ffffff;
+}
+
+/* ==========================================================================
+   "What We Build" - ball rolls a fluted QUARTER-CIRCLE arc (redesign).
+   The drawn sine line + crest nodes + step numbers are gone; the arc is a band
+   of ribbed "flute" streaks (the hero's distortion pattern), and ONE card shows
+   per quarter of the arc. Geometry is live-tunable via window.__bmaWwb.
+   ========================================================================== */
+/* the old path line is kept in the DOM only for getPointAtLength - hide it */
+#what-bma-builds .wwb2-zig-path {
+  stroke: none !important;
+  opacity: 0 !important;
+  filter: none !important;
+}
+#what-bma-builds .wwb2-zig-node {
+  display: none !important;
+}
+/* no numbering */
+#what-bma-builds .wwb2-card-step {
+  display: none !important;
+}
+/* the hero's fluted glass, ported: vertical light|dark|light ribbed strips.
+   fill + per-strip opacity are set in JS; keep them matte (no stroke, no glow) */
+#what-bma-builds .wwb2-flute {
+  stroke: none;
+}
+#what-bma-builds .wwb2-zig {
+  filter: none;
+}
+/* the header now lives INSIDE the pinned full-page stage (a hero-style intro)
+   and fades out as the ball comes in, driven by --wwb-p (set per frame in JS) */
+#what-bma-builds .wwb2-stage .bridge-text {
+  position: absolute;
+  z-index: 6;
+  left: clamp(24px, 7vw, 104px);
+  top: clamp(64px, 17vh, 220px);
+  max-width: min(720px, 82vw);
+  margin: 0;
+  pointer-events: none;
+}
+/* the hero's fluted glass is rendered on this canvas (navy + circle + ball) */
+#what-bma-builds .wwb2-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+/* dark navy scene so the ribbed glass + the ball read like the hero reference,
+   full-bleed to the whole viewport and true 100vh (drops the 860px cap) so the
+   pinned moment takes up the entire page */
+#what-bma-builds .wwb2-stage {
+  background: radial-gradient(
+    130% 105% at 78% 60%,
+    #1b2b46 0%,
+    #111f36 52%,
+    #0b1526 100%
+  );
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  height: 100vh;
+  min-height: 0;
+  max-height: none;
+}
+/* one card at a time, centred in the arc's open area, cross-fading in/out */
+#what-bma-builds .wwb2--scrub .wwb2-card {
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: 9%;
+  width: min(440px, 82vw);
+  transform: translateX(-50%) translateY(16px);
+  opacity: 0;
+  z-index: 4;
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+#what-bma-builds .wwb2--scrub .wwb2-card.is-open {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
