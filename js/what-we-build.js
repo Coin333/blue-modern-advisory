@@ -90,7 +90,7 @@ import { scroll } from "https://cdn.jsdelivr.net/npm/motion@12/+esm";
     angEnd: 268, // p=1 angle (deg): top of centre -> ~86 deg quarter sweep
     flutes: 24, // vertical ribbed strips in the left glass band (hero ~22)
     fluteFrac: 0.55, // left fraction of stage width the glass band covers
-    fluteShade: 0.55, // ribbed light/dark strength (0..1; copied from the hero)
+    fluteShade: 0.4, // ribbed light/dark strength (0..1; copied from the hero)
     rollFactor: 1.1, // ball spin vs distance rolled
     flipV: true, // mirror the arc top-to-bottom (curve bends the other way)
     fluteStretch: 0.2, // vertical stretch of each refracted strip (hero value)
@@ -312,9 +312,9 @@ import { scroll } from "https://cdn.jsdelivr.net/npm/motion@12/+esm";
       0.6 * H,
       1.05 * Math.max(W, H),
     );
-    bg.addColorStop(0, "#1b2b46");
-    bg.addColorStop(0.52, "#111f36");
-    bg.addColorStop(1, "#0b1526");
+    bg.addColorStop(0, "#14233a");
+    bg.addColorStop(0.52, "#0e1c2f");
+    bg.addColorStop(1, "#0a1624");
     g.fillStyle = bg;
     g.fillRect(0, 0, W, H);
     // the ball "comes in" - fades up over the first sliver of the lock (the same

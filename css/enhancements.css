@@ -2034,9 +2034,9 @@ html.bma-leaving #root {
      --sky (0..1) fades the whole thing in from white over the look-up band. */
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, #0d2740 calc(var(--sky, 0) * 100%), #ffffff) 0%,
-    color-mix(in srgb, #1f567c calc(var(--sky, 0) * 100%), #ffffff) 52%,
-    color-mix(in srgb, #3f86b0 calc(var(--sky, 0) * 92%), #ffffff) 100%
+    color-mix(in srgb, #0a1624 calc(var(--sky, 0) * 100%), #ffffff) 0%,
+    color-mix(in srgb, #14304a calc(var(--sky, 0) * 100%), #ffffff) 52%,
+    color-mix(in srgb, #2e6a94 calc(var(--sky, 0) * 92%), #ffffff) 100%
   );
 }
 /* slot the laptop host is reparented into while the ascent is engaged */

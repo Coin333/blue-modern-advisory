@@ -50,10 +50,10 @@
     bg0: "#0c1728", // background gradient, upper-left
     bg1: "#080f1e", // background gradient, middle
     bg2: "#05080f", // background gradient, lower-right corner
-    fluteFrac: 0.6, // left fraction of the width covered by the fluted glass
-    fluteCount: 22, // number of vertical flutes
-    fluteStretch: 0.2, // vertical streak elongation per flute
-    fluteShade: 0.55, // ribbed light/dark shading strength (0..1)
+    fluteFrac: 0.42, // left fraction of the width covered by the fluted glass
+    fluteCount: 34, // number of vertical flutes
+    fluteStretch: 0.1, // vertical streak elongation per flute
+    fluteShade: 0.38, // ribbed light/dark shading strength (0..1)
     copyFade: 1.55, // how fast the copy fades across the scrub (read by CSS)
     staticP: 0.16, // progress shown on the no-pin / reduced-motion frame
     debug: false,
